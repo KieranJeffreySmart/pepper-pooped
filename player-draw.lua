@@ -5,7 +5,7 @@ p = {}
 PLAYER_UNLEASHING = 18
 PLAYER_WAITING = 19
 PLAYER_DEFAULT_BOX_X = 16
-PLAYER_DEFAULT_BOX_Y = 32
+PLAYER_DEFAULT_BOX_Y = -32
 
 function p.NewPlayer(max_duration, fps, scene_x, scene_y)
     local player = {}

@@ -18,9 +18,8 @@ function anim.PlayAnimation(animation)
     end
 end
 
-
 function anim.DrawAnimation(animation, location, scale)
-    love.graphics.draw(animation.image, animation.quad, location.x, location.y, 0, scale, -scale)
+    love.graphics.draw(animation.image, location.x, location.y, 0, scale, scale)
 end
 
 LOOP_MENU = 1
@@ -39,8 +38,6 @@ INTRO_WAIT_INPUT = 11
 
 INTRO_CELL_WIDTH = 40
 INTRO_CELL_HEIGHT = 40
-
-
 
 COMMAND_START = 's'
 COMMAND_CONTINUE = 'c'
@@ -216,15 +213,17 @@ function DrawIntro()
         IntroState = INTRO_START
     end
 
-    dog.locationpx.x = INTRO_CUTSCENE_X + (dog.location.x * INTRO_CELL_WIDTH)
-    dog.locationpx.y = INTRO_CUTSCENE_Y
-    dog.scalepx = INTRO_CUTSCENE_SCALE + math.percent(dog.location.y*10, INTRO_CUTSCENE_SCALE)
-    dog_draw.DrawDog(dog)
+    DrawMap(game.map)
 
     player.locationpx.x = INTRO_CUTSCENE_X + player.location.x * INTRO_CELL_WIDTH
     player.locationpx.y = INTRO_CUTSCENE_Y
     player.scalepx = INTRO_CUTSCENE_SCALE + math.percent(player.location.y*10, INTRO_CUTSCENE_SCALE)
     player_draw.DrawPlayer(player)
+
+    dog.locationpx.x = INTRO_CUTSCENE_X + (dog.location.x * INTRO_CELL_WIDTH)
+    dog.locationpx.y = INTRO_CUTSCENE_Y
+    dog.scalepx = INTRO_CUTSCENE_SCALE + math.percent(dog.location.y*10, INTRO_CUTSCENE_SCALE)
+    dog_draw.DrawDog(dog)
 
     DrawConsole()
     
@@ -242,5 +241,5 @@ function DrawConsole()
     love.graphics.print("Poop: x " .. game.pooplocation.x .. " y " .. game.pooplocation.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+160)
     love.graphics.print("map: x " .. game.map.gridsize.x .. " y " .. game.map.gridsize.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+180)
     love.graphics.print("rndloc: x " .. LastGeneratedRandomLocation.x .. " y " .. LastGeneratedRandomLocation.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+200)
-
+    love.graphics.draw(dog.leashed_anim.image, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+220, 0, 3, 3)
 end

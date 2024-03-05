@@ -7,7 +7,7 @@ DOG_POOPING = 15
 DOG_WALKING = 16
 DOG_WAITING = 17
 DOG_DEFAULT_BOX_X = 16
-DOG_DEFAULT_BOX_Y = 16
+DOG_DEFAULT_BOX_Y = -16
 
 function d.NewDog(max_duration, fps, scene_x, scene_y)
     local dog = {}
@@ -75,22 +75,22 @@ function d.NewDog(max_duration, fps, scene_x, scene_y)
     dog.waiting_anim.playtime = 0
 
     dog.leashed_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.leashed_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.leashed_anim.image:getDimensions())
+    dog.leashed_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.leashed_anim.image)
 
     dog.running_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.running_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.running_anim.image:getDimensions())
+    dog.running_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.running_anim.image)
 
     dog.positioning_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.positioning_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.positioning_anim.image:getDimensions())
+    dog.positioning_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.positioning_anim.image)
 
     dog.pooping_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.pooping_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.pooping_anim.image:getDimensions())
+    dog.pooping_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.pooping_anim.image)
 
     dog.walking_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.walking_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.walking_anim.image:getDimensions())
+    dog.walking_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.walking_anim.image)
 
     dog.waiting_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.waiting_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.waiting_anim.image:getDimensions())
+    dog.waiting_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.waiting_anim.image)
 
     return dog
 end
