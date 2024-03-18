@@ -60,13 +60,14 @@ g = {}
         map.id = mapid
         map.backgroundimage = ''
         map.backgroundsize = {}
-        map.backgroundsize.x = 500
-        map.backgroundsize.y = 500
+        map.backgroundsize.x = 250
+        map.backgroundsize.y = 250
 
         map.gridsize = {}
         map.gridsize.x = 6
         map.gridsize.y = 6
         map.gridmap = {}
+
         for i = 1, map.gridsize.x, 1 do
             map.gridmap[i] = {}
             for y = 1, map.gridsize.y, 1 do

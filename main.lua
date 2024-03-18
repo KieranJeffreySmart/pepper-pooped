@@ -18,8 +18,12 @@ function anim.PlayAnimation(animation)
     end
 end
 
-function anim.DrawAnimation(animation, location, scale)
-    love.graphics.draw(animation.image, location.x, location.y, 0, scale, scale)
+function anim.DrawAnimation(animation, x, y, scale)
+    -- Sprites are drawn from top to bottom. 
+    -- This offsets y so the caller can assume y co-ordinates of the bottom, to work on a front plane
+    local yOffset = y - (animation.quadHeight * scale)
+
+    love.graphics.draw(animation.image, animation.quad, x, yOffset, 0, scale, scale)
 end
 
 LOOP_MENU = 1
@@ -70,6 +74,7 @@ EXIT_CUTSCENE_DURATION = 5
 INTRO_CUTSCENE_FPS = 10
 INTRO_CUTSCENE_DURATION = 15
 
+local tserial = require"Tserial"
 local player_draw = require"player-draw"
 local dog_draw = require"dog-draw"
 local goodbye_draw = require"goodbye-draw"
@@ -93,6 +98,7 @@ function IntroRestart()
 end
 
 function love.load()
+    love.window.setMode( 1000, 800)
     LoopState = LOOP_MENU
 end
 
@@ -187,10 +193,11 @@ function love.draw()
     elseif LoopState == LOOP_FAIL then
     elseif LoopState == LOOP_EXIT then
         love.graphics.print("Goodbye!", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-        local location = {}
-        location.x = EXIT_CUTSCENE_X+goodbye.message_anim.xupdate
-        location.y = EXIT_CUTSCENE_Y
-        anim.DrawAnimation(goodbye.message_anim, location, 3)
+        
+        goodbye.locationpx.x = EXIT_CUTSCENE_X+goodbye.message_anim.xupdate
+        goodbye.locationpx.y = EXIT_CUTSCENE_Y
+
+        goodbye_draw.DrawMessage(goodbye)
     end
 end
 
@@ -213,14 +220,22 @@ function DrawIntro()
         IntroState = INTRO_START
     end
 
-    DrawMap(game.map)
+    local mapWidth = (game.map.gridsize.x + 1) * INTRO_CELL_WIDTH;
 
-    player.locationpx.x = INTRO_CUTSCENE_X + player.location.x * INTRO_CELL_WIDTH
+    local playerScale = INTRO_CUTSCENE_SCALE + math.percent(player.location.y*10, INTRO_CUTSCENE_SCALE)
+
+    love.graphics.polygon('fill', 
+    INTRO_CUTSCENE_X,INTRO_CUTSCENE_Y, 
+    INTRO_CUTSCENE_X+mapWidth,INTRO_CUTSCENE_Y, 
+    INTRO_CUTSCENE_X+mapWidth,INTRO_CUTSCENE_Y+10, 
+    INTRO_CUTSCENE_X,INTRO_CUTSCENE_Y+10)
+
+    player.locationpx.x = INTRO_CUTSCENE_X + ((player.location.x-1) * INTRO_CELL_WIDTH)
     player.locationpx.y = INTRO_CUTSCENE_Y
-    player.scalepx = INTRO_CUTSCENE_SCALE + math.percent(player.location.y*10, INTRO_CUTSCENE_SCALE)
+    player.scalepx = playerScale
     player_draw.DrawPlayer(player)
 
-    dog.locationpx.x = INTRO_CUTSCENE_X + (dog.location.x * INTRO_CELL_WIDTH)
+    dog.locationpx.x = INTRO_CUTSCENE_X + ((dog.location.x-1) * INTRO_CELL_WIDTH)
     dog.locationpx.y = INTRO_CUTSCENE_Y
     dog.scalepx = INTRO_CUTSCENE_SCALE + math.percent(dog.location.y*10, INTRO_CUTSCENE_SCALE)
     dog_draw.DrawDog(dog)
@@ -230,16 +245,36 @@ function DrawIntro()
 end
 
 function DrawConsole()
+    local playerString = "{}"
+    local handleSerialisation = function () return '' end
+
+    if (player) then 
+        local playerLog = {
+            state = player.state,
+            location = player.location,
+            locationpx = player.locationpx,
+            scalepx = player.scalepx,
+            waiting_anim = player.waiting_anim
+        }
+        playerString = tserial.pack(playerLog, handleSerialisation, true)
+    end
+
+    local dogString = "{}"
+    if (dog) then 
+        local dogLog = {
+            state = dog.state,
+            location = dog.location,
+            locationpx = dog.locationpx,
+            scalepx = dog.scalepx,
+            leashed_anim = dog.leashed_anim,
+            running_anim = dog.running_anim,
+            pooping_anim = dog.pooping_anim
+        }
+        dogString = tserial.pack(dogLog, handleSerialisation, true)
+    end
+
     love.graphics.print("Loop State: " .. LoopState, GAME_MESSAGE_X+400, GAME_MESSAGE_Y)
     love.graphics.print("Intro State: " .. IntroState, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+20)
-    love.graphics.print("Playe State: " .. player.state, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+40)
-    love.graphics.print("Player: x " .. player.location.x .. " y " .. player.location.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+60)
-    love.graphics.print("Player px: x " .. player.locationpx.x .. " y " .. player.locationpx.y .. " scale " .. player.scalepx, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+80)
-    love.graphics.print("Dog State: " .. dog.state, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+100)
-    love.graphics.print("Dog: x " .. dog.location.x .. " y " .. dog.location.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+120)
-    love.graphics.print("Dog px: x " .. dog.locationpx.x .. " y " .. dog.locationpx.y .. " scale " .. dog.scalepx, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+140)
-    love.graphics.print("Poop: x " .. game.pooplocation.x .. " y " .. game.pooplocation.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+160)
-    love.graphics.print("map: x " .. game.map.gridsize.x .. " y " .. game.map.gridsize.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+180)
-    love.graphics.print("rndloc: x " .. LastGeneratedRandomLocation.x .. " y " .. LastGeneratedRandomLocation.y, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+200)
-    love.graphics.draw(dog.leashed_anim.image, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+220, 0, 3, 3)
+    love.graphics.print("Player: " .. playerString, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+40)
+    love.graphics.print("Dog: " .. dogString, GAME_MESSAGE_X+600, GAME_MESSAGE_Y+40)
 end

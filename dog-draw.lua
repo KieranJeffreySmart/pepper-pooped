@@ -9,13 +9,13 @@ DOG_WAITING = 17
 DOG_DEFAULT_BOX_X = 16
 DOG_DEFAULT_BOX_Y = -16
 
-function d.NewDog(max_duration, fps, scene_x, scene_y)
+function d.NewDog(max_duration, fps)
     local dog = {}
     dog.state = 0
     dog.location = {}
     dog.location.x = 1
     dog.location.y = 1
-    dog.scalepx = INTRO_CUTSCENE_SCALE
+    dog.scalepx = 1
     dog.locationpx = {}
     dog.locationpx.x = 0
     dog.locationpx.y = 0
@@ -74,24 +74,41 @@ function d.NewDog(max_duration, fps, scene_x, scene_y)
     dog.waiting_anim.frame_count = 4
     dog.waiting_anim.playtime = 0
 
-    dog.leashed_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.leashed_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.leashed_anim.image)
+    local l_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.leashed_anim.image = l_image
+    dog.leashed_anim.quadHeight = l_image:getHeight()
+    dog.leashed_anim.quadWidth = l_image:getWidth()
+    dog.leashed_anim.quad = love.graphics.newQuad(0, 0, dog.leashed_anim.quadWidth, dog.leashed_anim.quadHeight, l_image:getDimensions())
 
-    dog.running_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.running_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.running_anim.image)
+    local r_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.running_anim.image = r_image
+    dog.running_anim.quadHeight = r_image:getHeight()
+    dog.running_anim.quadWidth = r_image:getWidth()
+    dog.running_anim.quad = love.graphics.newQuad(0, 0, dog.running_anim.quadWidth, dog.running_anim.quadHeight, r_image:getDimensions())
 
-    dog.positioning_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.positioning_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.positioning_anim.image)
+    local p_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.positioning_anim.image = p_image
+    dog.positioning_anim.quadHeight = p_image:getHeight()
+    dog.positioning_anim.quadWidth = p_image:getWidth()
+    dog.positioning_anim.quad = love.graphics.newQuad(0, 0, dog.positioning_anim.quadWidth, dog.positioning_anim.quadHeight, p_image:getDimensions())
 
-    dog.pooping_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.pooping_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.pooping_anim.image)
+    local pp_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.pooping_anim.image = pp_image
+    dog.pooping_anim.quadHeight = pp_image:getHeight()
+    dog.pooping_anim.quadWidth = pp_image:getWidth()
+    dog.pooping_anim.quad = love.graphics.newQuad(0, 0, dog.pooping_anim.quadWidth, dog.pooping_anim.quadHeight, pp_image:getDimensions())
 
-    dog.walking_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.walking_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.walking_anim.image)
+    local w_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.walking_anim.image = w_image
+    dog.walking_anim.quadHeight = w_image:getHeight()
+    dog.walking_anim.quadWidth = w_image:getWidth()
+    dog.walking_anim.quad = love.graphics.newQuad(0, 0, dog.walking_anim.quadWidth, dog.walking_anim.quadHeight, l_image:getDimensions())
 
-    dog.waiting_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    dog.waiting_anim.quad = love.graphics.newQuad(scene_x, scene_y, DOG_DEFAULT_BOX_X, DOG_DEFAULT_BOX_Y, dog.waiting_anim.image)
-
+    local wt_image = love.graphics.newImage("dog_32x32.bmp") 
+    dog.waiting_anim.image = wt_image
+    dog.waiting_anim.quadHeight = wt_image:getHeight()
+    dog.waiting_anim.quadWidth = wt_image:getWidth()
+    dog.waiting_anim.quad = love.graphics.newQuad(0, 0, dog.waiting_anim.quadWidth, dog.waiting_anim.quadHeight, l_image:getDimensions())
     return dog
 end
 
@@ -160,21 +177,21 @@ end
 function d.DrawDog(dog)
 
     if dog.state == DOG_LEASHED then
-        anim.DrawAnimation(dog.leashed_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.leashed_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
         --write title
     elseif dog.state == DOG_RUNNING then
-        anim.DrawAnimation(dog.running_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.running_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
     elseif dog.state == DOG_POSITIONING then
-        anim.DrawAnimation(dog.positioning_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.positioning_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
         --write title
     elseif dog.state == DOG_POOPING then
-        anim.DrawAnimation(dog.pooping_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.pooping_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
         --
     elseif dog.state == DOG_WALKING then
         love.graphics.print("here!", PLAYER_SPEACH_X, PLAYER_SPEACH_Y)
-        anim.DrawAnimation(dog.walking_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.walking_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
     elseif dog.state == DOG_WAITING then
-        anim.DrawAnimation(dog.waiting_anim, dog.locationpx, dog.scalepx)
+        anim.DrawAnimation(dog.waiting_anim, dog.locationpx.x, dog.locationpx.y, dog.scalepx)
     end
 end
 return d

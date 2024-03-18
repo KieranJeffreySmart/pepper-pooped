@@ -5,16 +5,16 @@ p = {}
 PLAYER_UNLEASHING = 18
 PLAYER_WAITING = 19
 PLAYER_DEFAULT_BOX_X = 16
-PLAYER_DEFAULT_BOX_Y = -32
+PLAYER_DEFAULT_BOX_Y = -16
 
-function p.NewPlayer(max_duration, fps, scene_x, scene_y)
+function p.NewPlayer(max_duration, fps)
     local player = {}
     
     player.state = 0
     player.location = {}
-    player.location.x = 0
+    player.location.x = 1
     player.location.y = 1
-    player.scalepx = INTRO_CUTSCENE_SCALE
+    player.scalepx = 1
     player.locationpx = {}
     player.locationpx.x = 0
     player.locationpx.y = 0
@@ -37,12 +37,17 @@ function p.NewPlayer(max_duration, fps, scene_x, scene_y)
     player.waiting_anim.frame_count = 4
     player.waiting_anim.playtime = 0
 
-    
-    player.unleashing_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    player.unleashing_anim.quad = love.graphics.newQuad(scene_x, scene_y, PLAYER_DEFAULT_BOX_X, PLAYER_DEFAULT_BOX_Y, player.unleashing_anim.image:getDimensions())
+    local ua_image = love.graphics.newImage("owner_32x64.bmp") 
+    player.unleashing_anim.image = ua_image
+    player.unleashing_anim.quadHeight = ua_image:getHeight()
+    player.unleashing_anim.quadWidth = ua_image:getWidth()
+    player.unleashing_anim.quad = love.graphics.newQuad(0, 0, player.unleashing_anim.quadWidth, player.unleashing_anim.quadHeight, ua_image:getDimensions())
 
-    player.waiting_anim.image = love.graphics.newImage("dog2_32x32.bmp")
-    player.waiting_anim.quad = love.graphics.newQuad(scene_x, scene_y, PLAYER_DEFAULT_BOX_X, PLAYER_DEFAULT_BOX_Y, player.waiting_anim.image:getDimensions())
+    local w_image = love.graphics.newImage("owner_32x64.bmp")
+    player.waiting_anim.image = w_image
+    player.waiting_anim.quadHeight = w_image:getHeight()
+    player.waiting_anim.quadWidth = w_image:getWidth()
+    player.waiting_anim.quad = love.graphics.newQuad(0, 0, player.waiting_anim.quadWidth, player.waiting_anim.quadHeight, w_image:getDimensions())
 
     return player
 end
@@ -69,9 +74,9 @@ end
 
 function p.DrawPlayer(player)
     if player.state == PLAYER_UNLEASHING then
-        anim.DrawAnimation(player.unleashing_anim, player.locationpx, player.scalepx)
+        anim.DrawAnimation(player.unleashing_anim, player.locationpx.x, player.locationpx.y, player.scalepx)
     elseif player.state == PLAYER_WAITING then
-        anim.DrawAnimation(player.waiting_anim, player.locationpx, player.scalepx)
+        anim.DrawAnimation(player.waiting_anim, player.locationpx.x, player.locationpx.y, player.scalepx)
     end
 end
 return p
