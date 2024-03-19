@@ -32,13 +32,8 @@ end
 function g.AnimateMessage(dt, goodbye)
     goodbye.message_anim.frame_duration = goodbye.message_anim.frame_duration - dt
     if goodbye.message_anim.frame_duration <= 0 then -- remember we are working from after frame 1   
-        anim.PlayAnimation(goodbye.message_anim)
+        anim.AdvanceFrame(goodbye.message_anim)
         goodbye.message_anim.xupdate = 60 * (goodbye.message_anim.total_frame_count - 1)
     end
 end
-
-function g.DrawMessage(goodbye)    
-    anim.DrawAnimation(goodbye.message_anim, goodbye.locationpx.x, goodbye.locationpx.y, goodbye.scalepx)
-end
-
 return g

@@ -8,7 +8,18 @@ function math.percent(percent,maxvalue)
 end
 
 anim = {}
-function anim.PlayAnimation(animation)
+
+anim.OnCompleteHandlers = {}
+
+function anim.MediateOnComplete(animation)
+    anim.OnCompleteHandlers[animation]()
+end
+
+function anim.RegisterOnCompleteHandler(animation, handler)
+    anim.OnCompleteHandlers[animation] = handler
+end
+
+function anim.AdvanceFrame(animation)
     animation.playtime = animation.playtime + animation.max_frame_duration
     animation.frame_duration = animation.max_frame_duration
     animation.frame = animation.frame + 1
@@ -18,12 +29,23 @@ function anim.PlayAnimation(animation)
     end
 end
 
-function anim.DrawAnimation(animation, x, y, scale)
-    -- Sprites are drawn from top to bottom. 
-    -- This offsets y so the caller can assume y co-ordinates of the bottom, to work on a front plane
-    local yOffset = y - (animation.quadHeight * scale)
-
-    love.graphics.draw(animation.image, animation.quad, x, yOffset, 0, scale, scale)
+function anim.AnimateEntity(dt, entity, updateOnFrame, updateOnComplete)
+    local animation = entity.animations[entity.state]
+    if (animation) then
+        animation.frame_duration = animation.frame_duration - dt
+        if animation.frame_duration <= 0 then -- remember we are working from after frame 1  
+            anim.AdvanceFrame(animation)
+            if (updateOnFrame) then
+                updateOnFrame()
+            end
+            
+            if(animation.playtime >= animation.max_duration) then            
+                if (updateOnComplete) then
+                    updateOnComplete()
+                end
+            end
+        end
+    end
 end
 
 LOOP_MENU = 1
@@ -59,7 +81,9 @@ GAME_MESSAGE_Y = 50
 PLAYER_SPEACH_X = 150
 PLAYER_SPEACH_Y = 100
 INTRO_CUTSCENE_X = 100
-INTRO_CUTSCENE_Y = 350
+INTRO_CUTSCENE_Y = 100
+INTRO_CUTSCENE_HEIGHT = 250
+INTRO_CUTSCENE_WIDTH = 500
 INTRO_CUTSCENE_SCALE = 1
 EXIT_CUTSCENE_X = 200
 EXIT_CUTSCENE_Y = 250
@@ -84,17 +108,10 @@ local game = {}
 local player = {}
 local dog = {}
 
-LastGeneratedRandomLocation = {}
-
-function IntroRestart()
-    player = player_draw.NewPlayer(INTRO_CUTSCENE_DURATION, INTRO_CUTSCENE_FPS, INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y)
-    dog = dog_draw.NewDog(INTRO_CUTSCENE_DURATION, INTRO_CUTSCENE_FPS, INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y)
-
-    LastGeneratedRandomLocation.x = 0
-    LastGeneratedRandomLocation.y = 0
-
-    -- love.graphics:setDefaultfilter("nearest")
-
+function IntroReset()
+    game = game_generator.NewGame();
+    player = player_draw.NewPlayer(INTRO_CUTSCENE_DURATION, INTRO_CUTSCENE_FPS, PLAYER_WAITING, game.start)
+    dog = dog_draw.NewDog(INTRO_CUTSCENE_DURATION, INTRO_CUTSCENE_FPS, DOG_LEASHED, game.start, game.pooplocation, game.sitlocation)
 end
 
 function love.load()
@@ -105,8 +122,7 @@ end
 function love.keyreleased(key)
     if LoopState==LOOP_MENU then
         if key == COMMAND_START then
-            game = game_generator.NewGame();
-            dog.pooplocation = game.pooplocation
+            IntroReset()
             LoopState = LOOP_INTRO
         elseif key == COMMAND_EXIT then
             LoopState = LOOP_EXIT
@@ -143,18 +159,38 @@ end
 
 function love.update(dt)
     if LoopState==LOOP_MENU then
-        IntroRestart()
+        
     elseif LoopState == LOOP_INTRO then
         if dt < 0.04 then
-            dog_draw.AnimateDog(dt, dog, game.map)
-            player_draw.AnimatePlayer(dt, player)
+            anim.AnimateEntity(dt, player,
+            function ()
+                player_draw.UpdateOnAnimationFrame(player)
+            end,
+            function ()
+                player_draw.UpdateOnAnimationComplete(player)
+            end)
+
+            anim.AnimateEntity(dt, dog,
+            function ()
+                dog_draw.UpdateOnAnimationFrame(dog, game.map)
+            end,
+            function ()
+                dog_draw.UpdateOnAnimationComplete(dog)
+            end)
+
             if (player.state == PLAYER_WAITING and dog.state == DOG_LEASHED) then
                 dog.state = DOG_RUNNING
                 IntroState = INTRO_CUTSCENE
             end
-            if(dog.state == DOG_WAITING) then                
+            if(dog.state == DOG_SITTING) then
                 IntroState = INTRO_WAIT_INPUT
             end
+            
+            local mapdrwdata = CreateMapDrawData()
+            game.map.drawData = mapdrwdata
+            player.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
+            dog.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
+
         else
             return
         end
@@ -189,6 +225,7 @@ function love.draw()
     elseif LoopState == LOOP_INTRO then
         DrawIntro()
     elseif LoopState == LOOP_PLAY then
+        DrawMap(game.map)
     elseif LoopState == LOOP_WIN then
     elseif LoopState == LOOP_FAIL then
     elseif LoopState == LOOP_EXIT then
@@ -196,14 +233,77 @@ function love.draw()
         
         goodbye.locationpx.x = EXIT_CUTSCENE_X+goodbye.message_anim.xupdate
         goodbye.locationpx.y = EXIT_CUTSCENE_Y
-
-        goodbye_draw.DrawMessage(goodbye)
+        
+        love.graphics.draw(goodbye.message_anim.image, goodbye.message_anim.quad, goodbye.locationpx.x, goodbye.locationpx.y, 0, goodbye.scalepx, goodbye.scalepx)
     end
+end
+
+
+
+function DrawMap(map)
 end
 
 function DrawMenu()
     love.graphics.print("s - Start", MAIN_MENU_X, MAIN_MENU_Y)
     love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y + 25)
+end
+
+function CreateMapDrawData()
+    local frametlTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y)
+    local frametrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y)
+    local frameblTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
+    local framebrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
+
+    local mapheight = 10
+
+    local maptlx, maptly = frameblTransform:transformPoint(0, -mapheight)
+    local maptrx, maptry = framebrTransform:transformPoint(0, -mapheight)
+    local mapbrx, mapbry = framebrTransform:transformPoint(0, 0)
+    local mapblx, mapbly = frameblTransform:transformPoint(0, 0)
+    
+    local cellWidth = (maptrx - maptlx) / game.map.gridsize.x
+    local data = {}
+    data.tl = {}
+    data.tl.x = maptlx
+    data.tl.y = maptly
+    data.tr = {}
+    data.tr.x = maptrx
+    data.tr.y = maptry
+    data.bl = {}
+    data.bl.x = mapblx
+    data.bl.y = mapbly
+    data.br = {}
+    data.br.x = mapbrx
+    data.br.y = mapbry
+    data.cellWidth = cellWidth
+
+
+    return data
+end
+
+function CreateEntityDrawData(platformX, platformY, cellWidth, entity)
+
+    if (not entity.state) then
+        error("the entity does not have a valid state")
+    end
+
+    local platformTransform = love.math.newTransform()
+    platformTransform:translate(platformX, platformY+1)
+
+    local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
+    local xpos, ypos =  platformTransform:transformPoint(relativeX, -1)
+    local entityScale = 1
+    local animation = entity.animations[entity.state];
+
+    if (animation) then
+        local imageScale = cellWidth / animation.quadWidth
+        entityScale = imageScale-math.percent((entity.location.y-1)*10, imageScale)
+
+        xpos = xpos - ((animation.quadWidth * entityScale) / 2)
+        ypos = ypos - (animation.quadHeight * entityScale)
+    end
+
+    return { x = xpos, y = ypos, scale = entityScale, animation = animation }
 end
 
 function DrawIntro()
@@ -220,28 +320,17 @@ function DrawIntro()
         IntroState = INTRO_START
     end
 
-    local mapWidth = (game.map.gridsize.x + 1) * INTRO_CELL_WIDTH;
-
-    local playerScale = INTRO_CUTSCENE_SCALE + math.percent(player.location.y*10, INTRO_CUTSCENE_SCALE)
-
     love.graphics.polygon('fill', 
-    INTRO_CUTSCENE_X,INTRO_CUTSCENE_Y, 
-    INTRO_CUTSCENE_X+mapWidth,INTRO_CUTSCENE_Y, 
-    INTRO_CUTSCENE_X+mapWidth,INTRO_CUTSCENE_Y+10, 
-    INTRO_CUTSCENE_X,INTRO_CUTSCENE_Y+10)
+    game.map.drawData.tl.x,game.map.drawData.tl.y, 
+    game.map.drawData.tr.x,game.map.drawData.tr.y, 
+    game.map.drawData.br.x,game.map.drawData.br.y, 
+    game.map.drawData.bl.x,game.map.drawData.bl.y)
 
-    player.locationpx.x = INTRO_CUTSCENE_X + ((player.location.x-1) * INTRO_CELL_WIDTH)
-    player.locationpx.y = INTRO_CUTSCENE_Y
-    player.scalepx = playerScale
-    player_draw.DrawPlayer(player)
-
-    dog.locationpx.x = INTRO_CUTSCENE_X + ((dog.location.x-1) * INTRO_CELL_WIDTH)
-    dog.locationpx.y = INTRO_CUTSCENE_Y
-    dog.scalepx = INTRO_CUTSCENE_SCALE + math.percent(dog.location.y*10, INTRO_CUTSCENE_SCALE)
-    dog_draw.DrawDog(dog)
+    love.graphics.draw(player.drawData.animation.image, player.drawData.animation.quad, player.drawData.x, player.drawData.y, 0, player.drawData.scale, player.drawData.scale)
+    
+    love.graphics.draw(dog.drawData.animation.image, dog.drawData.animation.quad, dog.drawData.x, dog.drawData.y, 0, dog.drawData.scale, dog.drawData.scale)
 
     DrawConsole()
-    
 end
 
 function DrawConsole()
@@ -252,10 +341,9 @@ function DrawConsole()
         local playerLog = {
             state = player.state,
             location = player.location,
-            locationpx = player.locationpx,
-            scalepx = player.scalepx,
-            waiting_anim = player.waiting_anim
+            drawData = player.drawData
         }
+
         playerString = tserial.pack(playerLog, handleSerialisation, true)
     end
 
@@ -264,17 +352,17 @@ function DrawConsole()
         local dogLog = {
             state = dog.state,
             location = dog.location,
-            locationpx = dog.locationpx,
-            scalepx = dog.scalepx,
-            leashed_anim = dog.leashed_anim,
-            running_anim = dog.running_anim,
-            pooping_anim = dog.pooping_anim
+            sitlocation = dog.sitlocation,
+            drawData = dog.drawData
         }
+
         dogString = tserial.pack(dogLog, handleSerialisation, true)
     end
 
-    love.graphics.print("Loop State: " .. LoopState, GAME_MESSAGE_X+400, GAME_MESSAGE_Y)
-    love.graphics.print("Intro State: " .. IntroState, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+20)
-    love.graphics.print("Player: " .. playerString, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+40)
+    coordinatesString = tserial.pack(game.map.drawData, handleSerialisation, true)
+    
+
+    love.graphics.print("Map Coordinates: " .. coordinatesString, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+20)
+    love.graphics.print("Player: " .. playerString, GAME_MESSAGE_X+400, GAME_MESSAGE_Y+300)
     love.graphics.print("Dog: " .. dogString, GAME_MESSAGE_X+600, GAME_MESSAGE_Y+40)
 end

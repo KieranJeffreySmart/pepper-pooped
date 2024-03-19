@@ -1,3 +1,31 @@
+mapping = {}
+function mapping.GetRandomAvailableLocation(gridmap, gridsize)
+    local location = {}
+    location.x = 0
+    location.y = 0
+
+    local random_x = 1
+    local random_y = 1
+    local findLocation = true
+
+
+    while(findLocation) do
+        random_x = math.random(1, gridsize.x)
+        random_y = math.random(1, gridsize.y)
+        if ((random_x > 1 or random_y > 1) and gridmap[random_x][random_y] == 'E') then
+            location.x = random_x
+            location.y = random_y
+            findLocation = false
+        end
+    end
+
+    LastGeneratedRandomLocation = {}
+    LastGeneratedRandomLocation.x = random_x
+    LastGeneratedRandomLocation.y = random_y
+
+    return location
+end
+
 g = {}
 
     function g.NewGame()
@@ -8,11 +36,13 @@ g = {}
         local game = {}
         game.map  = GetMap(1)
         game.poop = GetPoop(1)
-        game.pooplocation = GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        game.pooplocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
         game.map.gridmap[game.pooplocation.x][game.pooplocation.y] = 'P'
+        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        game.map.gridmap[game.sitlocation.x][game.sitlocation.y] = 'D'
         game.start = {}
         game.start.x = 1
-        game.start.y = 1
+        game.start.y = 5
         return game
     end
 
@@ -28,32 +58,7 @@ g = {}
     end
 
 
-    function GetRandomAvailableLocation(gridmap, gridsize)
-        local location = {}
-        location.x = 0
-        location.y = 0
 
-        local random_x = 1
-        local random_y = 1
-        local findLocation = true
-
-
-        while(findLocation) do
-            random_x = math.random(1, gridsize.x)
-            random_y = math.random(1, gridsize.y)
-            if ((random_x > 1 or random_y > 1) and gridmap[random_x][random_y] == 'E') then
-                location.x = random_x
-                location.y = random_y
-                findLocation = false
-            end
-        end
-
-        LastGeneratedRandomLocation = {}
-        LastGeneratedRandomLocation.x = random_x
-        LastGeneratedRandomLocation.y = random_y
-
-        return location
-    end
 
     function GetMap(mapid)
         local map = {}
@@ -66,6 +71,7 @@ g = {}
         map.gridsize = {}
         map.gridsize.x = 6
         map.gridsize.y = 6
+
         map.gridmap = {}
 
         for i = 1, map.gridsize.x, 1 do
@@ -85,7 +91,7 @@ g = {}
         map.objects[2].name='mooringpost'
 
         for index, value in ipairs(map.objects) do
-            local objloc = GetRandomAvailableLocation(map.gridmap, map.gridsize)
+            local objloc = mapping.GetRandomAvailableLocation(map.gridmap, map.gridsize)
             map.gridmap[objloc.x][objloc.y] = index
         end
     end
