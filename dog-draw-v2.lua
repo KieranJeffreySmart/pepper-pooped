@@ -1,7 +1,7 @@
 require"extensions"
 local anim = require"animation"
 
-d = {}
+dd2 = {}
 
 DOG_LEASHED = 12
 DOG_RUNNING = 13
@@ -12,10 +12,7 @@ DOG_SITTING = 17
 DOG_DEFAULT_QUAD_WIDTH = 32
 DOG_DEFAULT_QUAD_HEIGHT = 32
 
-
-
-
-function d.NewDog(defaultState, startLocation, pooplocation, sitlocation)
+function dd2.NewDog(defaultState, startLocation, pooplocation, sitlocation)
     local dog = {}
     dog.state = defaultState
     dog.location = startLocation
@@ -24,7 +21,7 @@ function d.NewDog(defaultState, startLocation, pooplocation, sitlocation)
     dog.sitlocation = sitlocation
 
     dog.animations = {}
-    
+
     local image = love.graphics.newImage("dog_animations_32x32.bmp")
 
     dog.animations[DOG_LEASHED] = anim.NewAnimation()
@@ -41,7 +38,7 @@ function d.NewDog(defaultState, startLocation, pooplocation, sitlocation)
         runningclip.repeatForSeconds = 3
         dog.animations[DOG_RUNNING].cliplist[1] = runningclip
     end
-    
+
     dog.animations[DOG_POSITIONING] = anim.NewAnimation()
     yPos = DOG_DEFAULT_QUAD_HEIGHT*2
     local lookforwardclip = anim.NewClip(0, yPos, 1, DOG_DEFAULT_QUAD_WIDTH, DOG_DEFAULT_QUAD_HEIGHT, image)
@@ -89,7 +86,7 @@ function d.NewDog(defaultState, startLocation, pooplocation, sitlocation)
     return dog
 end
 
-function d.UpdateOnAnimatedFrame(dog, map)
+function dd2.updateNextFrame(dog, map)
     if dog.state == DOG_RUNNING then
         local randomLocation = mapping.GetRandomAvailableLocation(map.gridmap, map.gridsize)
         dog.location.x = randomLocation.x
@@ -108,7 +105,7 @@ function d.UpdateOnAnimatedFrame(dog, map)
     end
 end
 
-function d.UpdateOnAnimationComplete(dog)
+function dd2.updateAnimationCompleted(dog)
     if dog.state == DOG_RUNNING then
         dog.location = dog.pooplocation
         dog.state = DOG_POSITIONING
@@ -123,4 +120,8 @@ function d.UpdateOnAnimationComplete(dog)
     end
 end
 
-return d
+function dd2.updateNextClip(dog)
+    -- nothing to do here, do I really need this?
+end
+
+return dd2

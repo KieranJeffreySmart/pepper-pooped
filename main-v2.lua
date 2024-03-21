@@ -67,12 +67,12 @@ function IntroReset()
     dog = dog_draw.NewDog(INTRO_CUTSCENE_DURATION, INTRO_CUTSCENE_FPS, DOG_LEASHED, game.start, game.pooplocation, game.sitlocation)
 end
 
-function love.load()
+function OnLoad()
     love.window.setMode( 1000, 800)
     LoopState = LOOP_MENU
 end
 
-function love.keyreleased(key)
+function OnKeyreleased(key)
     if LoopState==LOOP_MENU then
         if key == COMMAND_START then
             IntroReset()
@@ -111,7 +111,64 @@ function DoGameCommand(input)
 end
 
 
-function love.update(dt)
+function CreateMapDrawData()
+    -- these first two are not used, should I keep them?
+    local frametlTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y)
+    local frametrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y)
+    local frameblTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
+    local framebrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
+
+    local mapheight = 10
+
+    local maptlx, maptly = frameblTransform:transformPoint(0, -mapheight)
+    local maptrx, maptry = framebrTransform:transformPoint(0, -mapheight)
+    local mapbrx, mapbry = framebrTransform:transformPoint(0, 0)
+    local mapblx, mapbly = frameblTransform:transformPoint(0, 0)
+    
+    local cellWidth = (maptrx - maptlx) / game.map.gridsize.x
+    local data = {}
+    data.tl = {}
+    data.tl.x = maptlx
+    data.tl.y = maptly
+    data.tr = {}
+    data.tr.x = maptrx
+    data.tr.y = maptry
+    data.bl = {}
+    data.bl.x = mapblx
+    data.bl.y = mapbly
+    data.br = {}
+    data.br.x = mapbrx
+    data.br.y = mapbry
+    data.cellWidth = cellWidth
+
+    return data
+end
+
+function CreateEntityDrawData(platformX, platformY, cellWidth, entity)
+    if (not entity.state) then
+        error("the entity does not have a valid state")
+    end
+
+    local platformTransform = love.math.newTransform()
+    platformTransform:translate(platformX, platformY+1)
+
+    local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
+    local xpos, ypos =  platformTransform:transformPoint(relativeX, -1)
+    local entityScale = 1
+    local animation = entity.animations[entity.state];
+
+    if (animation) then
+        local imageScale = cellWidth / animation.quadWidth
+        entityScale = imageScale-math.percent((entity.location.y-1)*10, imageScale)
+
+        xpos = xpos - ((animation.quadWidth * entityScale) / 2)
+        ypos = ypos - (animation.quadHeight * entityScale)
+    end
+
+    return { x = xpos, y = ypos, scale = entityScale, animation = animation }
+end
+
+function UpdateFrames(dt)
     if ( dt < 0.04 and not anim.AdvanceFrameTimer(dt)) then
         if LoopState == LOOP_INTRO then
             anim.AdvanceAnimation(dt, player.animations[player.state],
@@ -143,18 +200,16 @@ function love.update(dt)
             if(dog.state == DOG_SITTING) then
                 IntroState = INTRO_WAIT_INPUT
             end
-            
+
             local mapdrwdata = CreateMapDrawData()
             game.map.drawData = mapdrwdata
             player.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
             dog.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
-
         end
     end
-
 end
 
-function love.draw()
+function DrawFrames()
     if LoopState==LOOP_MENU then
         DrawMenu()
     elseif LoopState == LOOP_INTRO then
@@ -179,64 +234,6 @@ end
 function DrawMenu()
     love.graphics.print("s - Start", MAIN_MENU_X, MAIN_MENU_Y)
     love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y + 25)
-end
-
-function CreateMapDrawData()
-    local frametlTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y)
-    local frametrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y)
-    local frameblTransform = love.math.newTransform(INTRO_CUTSCENE_X, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
-    local framebrTransform = love.math.newTransform(INTRO_CUTSCENE_X+INTRO_CUTSCENE_WIDTH, INTRO_CUTSCENE_Y+INTRO_CUTSCENE_HEIGHT)
-
-    local mapheight = 10
-
-    local maptlx, maptly = frameblTransform:transformPoint(0, -mapheight)
-    local maptrx, maptry = framebrTransform:transformPoint(0, -mapheight)
-    local mapbrx, mapbry = framebrTransform:transformPoint(0, 0)
-    local mapblx, mapbly = frameblTransform:transformPoint(0, 0)
-    
-    local cellWidth = (maptrx - maptlx) / game.map.gridsize.x
-    local data = {}
-    data.tl = {}
-    data.tl.x = maptlx
-    data.tl.y = maptly
-    data.tr = {}
-    data.tr.x = maptrx
-    data.tr.y = maptry
-    data.bl = {}
-    data.bl.x = mapblx
-    data.bl.y = mapbly
-    data.br = {}
-    data.br.x = mapbrx
-    data.br.y = mapbry
-    data.cellWidth = cellWidth
-
-
-    return data
-end
-
-function CreateEntityDrawData(platformX, platformY, cellWidth, entity)
-
-    if (not entity.state) then
-        error("the entity does not have a valid state")
-    end
-
-    local platformTransform = love.math.newTransform()
-    platformTransform:translate(platformX, platformY+1)
-
-    local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
-    local xpos, ypos =  platformTransform:transformPoint(relativeX, -1)
-    local entityScale = 1
-    local animation = entity.animations[entity.state];
-
-    if (animation) then
-        local imageScale = cellWidth / animation.quadWidth
-        entityScale = imageScale-math.percent((entity.location.y-1)*10, imageScale)
-
-        xpos = xpos - ((animation.quadWidth * entityScale) / 2)
-        ypos = ypos - (animation.quadHeight * entityScale)
-    end
-
-    return { x = xpos, y = ypos, scale = entityScale, animation = animation }
 end
 
 function DrawIntro()
