@@ -1,85 +1,52 @@
-
+require"custextensions"
+local anim = require"animation"
+local log = require"log"
+local tserial = require"Tserial"
+local handleSerialisation = function () return '' end
 
 pd2 = {}
 
 PLAYER_UNLEASHING = 18
 PLAYER_WAITING = 19
-PLAYER_DEFAULT_BOX_X = 16
-PLAYER_DEFAULT_BOX_Y = -16
+PLAYER_DEFAULT_QUAD_WIDTH = 32
+PLAYER_DEFAULT_QUAD_HEIGHT = 64
 
-function pd2.NewPlayer(max_duration, fps, defaultState, defaultLocation)
+function pd2.NewPlayer(defaultState, startLocation)
     local player = {}
-    
     player.state = defaultState
-    player.location = {}
-    player.location.x = defaultLocation.x
-    player.location.y = defaultLocation.y
+    player.location = startLocation
     player.defaultState = defaultState
 
     player.animations = {}
-    player.animations[PLAYER_UNLEASHING] = {}
-    player.animations[PLAYER_UNLEASHING].max_duration = 2
-    player.animations[PLAYER_UNLEASHING].max_frame_duration = player.animations[PLAYER_UNLEASHING].max_duration / fps
-    player.animations[PLAYER_UNLEASHING].frame = 1
-    player.animations[PLAYER_UNLEASHING].total_frame_count = 1
-    player.animations[PLAYER_UNLEASHING].frame_duration = player.animations[PLAYER_UNLEASHING].max_frame_duration
-    player.animations[PLAYER_UNLEASHING].frame_count = 4
-    player.animations[PLAYER_UNLEASHING].playtime = 0
 
-    local ua_image = love.graphics.newImage("owner_32x64.bmp")
-    player.animations[PLAYER_UNLEASHING].image = ua_image
-    player.animations[PLAYER_UNLEASHING].quadHeight = ua_image:getHeight()
-    player.animations[PLAYER_UNLEASHING].quadWidth = ua_image:getWidth()
-    player.animations[PLAYER_UNLEASHING].quad = love.graphics.newQuad(0, 0, player.animations[PLAYER_UNLEASHING].quadWidth, player.animations[PLAYER_UNLEASHING].quadHeight, ua_image:getDimensions())
+    local image = love.graphics.newImage("player_animations_32x64.bmp")
 
-    player.animations[PLAYER_WAITING] = {}
-    player.animations[PLAYER_WAITING].max_duration = max_duration
-    player.animations[PLAYER_WAITING].max_frame_duration = player.animations[PLAYER_WAITING].max_duration / fps
-    player.animations[PLAYER_WAITING].frame = 1
-    player.animations[PLAYER_WAITING].total_frame_count = 1
-    player.animations[PLAYER_WAITING].frame_duration = player.animations[PLAYER_WAITING].max_frame_duration
-    player.animations[PLAYER_WAITING].frame_count = 4
-    player.animations[PLAYER_WAITING].playtime = 0
+    player.animations[PLAYER_UNLEASHING] = anim.NewAnimation(PLAYER_UNLEASHING)
+    local yPos = 0
+    local unleashingClip = anim.NewClip(0, yPos, 2, PLAYER_DEFAULT_QUAD_WIDTH,  PLAYER_DEFAULT_QUAD_HEIGHT, image)
+    if (unleashingClip) then
+        player.animations[PLAYER_UNLEASHING].cliplist[1] = unleashingClip
+        player.animations[PLAYER_UNLEASHING].cliplist[2] = unleashingClip
+        player.animations[PLAYER_UNLEASHING].cliplist[3] = unleashingClip
+    end
 
-    local w_image = love.graphics.newImage("owner_32x64.bmp")
-    player.animations[PLAYER_WAITING].image = w_image
-    player.animations[PLAYER_WAITING].quadHeight = w_image:getHeight()
-    player.animations[PLAYER_WAITING].quadWidth = w_image:getWidth()
-    player.animations[PLAYER_WAITING].quad = love.graphics.newQuad(0, 0, player.animations[PLAYER_WAITING].quadWidth, player.animations[PLAYER_WAITING].quadHeight, w_image:getDimensions())
+    player.animations[PLAYER_WAITING] = anim.NewAnimation(PLAYER_WAITING)
+    yPos = PLAYER_DEFAULT_QUAD_HEIGHT
+    local waitingClip = anim.NewClip(0, yPos, 2, PLAYER_DEFAULT_QUAD_WIDTH,  PLAYER_DEFAULT_QUAD_HEIGHT, image)
+    if (waitingClip) then
+        player.animations[PLAYER_WAITING].cliplist[1] = unleashingClip
+    end
 
     return player
 end
 
-
-function pd2.AnimatePlayer(dt, player)
-    if player.state == PLAYER_UNLEASHING then
-        player.animations[PLAYER_UNLEASHING].frame_duration = player.animations[PLAYER_UNLEASHING].frame_duration - dt
-        if player.animations[PLAYER_UNLEASHING].frame_duration <= 0 then -- remember we are working from after frame 1  
-            anim.AdvanceFrame(player.animations[PLAYER_UNLEASHING])
-            if(player.animations[PLAYER_UNLEASHING].playtime >= player.animations[PLAYER_UNLEASHING].max_duration) then
-                player.state = PLAYER_WAITING
-            end
-        end
-    elseif player.state == PLAYER_WAITING then
-        player.animations[PLAYER_WAITING].frame_duration = player.animations[PLAYER_WAITING].frame_duration - dt
-        if player.animations[PLAYER_WAITING].frame_duration <= 0 then -- remember we are working from after frame 1  
-            anim.AdvanceFrame(player.animations[PLAYER_WAITING])
-        end
-    else
-        player.state = PLAYER_UNLEASHING
-    end
+function pd2.updateNextFrame(player)
+    return true
 end
 
-function pd2.UpdateOnAnimationFrame(player)
-    return false
-end
-
-function pd2.UpdateOnAnimationComplete(player)
-    if player.state == PLAYER_UNLEASHING then
-        player.state = PLAYER_WAITING
-    else
-        player.state = player.defaultState
-    end
+function pd2.updateNextClip(player)
+    -- nothing to do here, do I really need this?
+    return true
 end
 
 return pd2

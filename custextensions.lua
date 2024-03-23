@@ -1,6 +1,6 @@
 function table.CreateIterator (t)
     local i = 0
-    local n = tablelib.getn(t)
+    local n = table.getn(t)
     return function ()
              i = i + 1
              if i <= n then return t[i] end
