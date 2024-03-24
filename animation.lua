@@ -10,8 +10,8 @@ local handleSerialisation = function () return '' end
 
 function anim.cutQuads(startX, startY, frames, width, height, image)
     local quads = {}
-    for i = 0, frames-1 do
-        quads[i] = love.graphics.newQuad(startX, startY + width * i, width, height, image:getDimensions())
+    for i = 1, frames do
+        quads[i] = love.graphics.newQuad(startX + width * (i-1), startY, width, height, image:getDimensions())
     end
     return quads
 end
@@ -22,11 +22,11 @@ function anim.NewClip(xPos, yPos, frames, width, height, image)
     clip.frames = {}
     clip.frames.ittr = false
     clip.frames.next = function ()
-        log.debug("frames.next")
+        --log.debug("frames.next")
         if (not clip.frames.ittr) then clip.frames.ittr = table.CreateIterator(clip.quads) end
 
         clip.frame = clip.frames.ittr()
-        if not clip.frame then log.debug("no frame") end
+        --if not clip.frame then log.debug("no frame") end
         return clip.frame
     end
 
@@ -59,9 +59,9 @@ function anim.NewAnimation(id)
             animation.clips.ittr = table.CreateIterator(animation.cliplist)
         end
 
+        if (animation.clip) then animation.clip.frames.first() end
         animation.clip = animation.clips.ittr()
-        if not animation.clip.frames.first() then log.debug("no frame on new clip") end
-
+        if (animation.clip) then animation.clip.frames.first() end
         return animation.clip
     end
     animation.clips.first = function ()
@@ -80,15 +80,15 @@ function anim.AdvanceFrameTimer(dt)
         return playtime
     end
 
-    return false
+    return 0
 end
 
 local function AdvanceFrame(clip)
-    log.debug("repeat for :", clip.repeatForSeconds, " t: ", clip.playtime)
+    --log.debug("repeat for :", clip.repeatForSeconds, " t: ", clip.playtime)
     local shouldRepeat = clip.repeatForSeconds > 0 and clip.playtime < clip.repeatForSeconds
     
     if (not clip.frames.next() ) then
-        log.debug("failed next frame")
+        --log.debug("failed next frame")
         if (shouldRepeat) then
             clip.frames.first()
         else        
@@ -100,23 +100,23 @@ local function AdvanceFrame(clip)
 end
 
 function anim.AdvanceAnimation(playtime, animation)
-    log.debug("advance animation: ", animation.id)
+    --"advance animation: ", animation.id)
     if (not animation.clip) then
         animation.clip = animation.clips.first()
         animation.clip.playtime = 0
-        log.debug("first clip")
+        --log.debug("first clip")
     else
         animation.clip.playtime = animation.clip.playtime + playtime
 
         if (AdvanceFrame(animation.clip)) then
-            log.debug("next frame")
+            --log.debug("next frame")
         else
             if(animation.clips.next()) then
                 animation.clip.playtime = 0
-                log.debug("next clip")
+                --log.debug("next clip")
             else
-                animation.clip.frames.reset()
-                log.debug("animation ended")
+                animation.clips.first()
+                --log.debug("animation ended")
                 return false
             end
         end

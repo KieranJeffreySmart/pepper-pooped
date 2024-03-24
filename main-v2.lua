@@ -4,7 +4,7 @@ local anim = require"animation"
 local tserial = require"Tserial"
 local player_draw_v2 = require"player-draw-v2"
 local dog_draw_v2 = require"dog-draw-v2"
-local goodbye_draw = require"goodbye-draw"
+local goodbye_draw = require"goodbye-drawV2"
 local game_generator = require"game-generator"
 
 LOOP_MENU = 1
@@ -57,7 +57,7 @@ EXIT_CUTSCENE_DURATION = 5
 INTRO_CUTSCENE_FPS = 10
 INTRO_CUTSCENE_DURATION = 15
 
-local goodbye = goodbye_draw.NewMessage(EXIT_CUTSCENE_DURATION, EXIT_CUTSCENE_FPS, EXIT_CUTSCENE_X, EXIT_CUTSCENE_Y)
+local goodbye = goodbye_draw.NewMessage()
 local game = {}
 local player = {}
 local dog = {}
@@ -68,10 +68,13 @@ local handleSerialisation = function () return '' end
 local m = {}
 
 local function IntroReset()
-    log.debug("reset intro ")
+    --log.debug("reset intro ")
     game = game_generator.NewGame()
     player = player_draw_v2.NewPlayer(PLAYER_UNLEASHING, game.start)
     dog = dog_draw_v2.NewDog(DOG_LEASHED, game.start, game.pooplocation, game.sitlocation)
+
+    anim.AdvanceAnimation(0, player.animations[player.state])
+    anim.AdvanceAnimation(0, dog.animations[dog.state])
 end
 
 local function DoGameCommand(input)
@@ -126,29 +129,27 @@ local function CreateEntityDrawData(platformX, platformY, cellWidth, entity)
 
     local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
     local xpos, ypos =  platformTransform:transformPoint(relativeX, -1)
-    local entityScale = 1
+    local entityscalex = 1
+    local entityscaley = 1
     local animation = entity.animations[entity.state];
 
     if (animation and animation.clip) then
         local imageScale = cellWidth / animation.clip.quadWidth
-        entityScale = imageScale-math.percent((entity.location.y-1)*10, imageScale)
+        entityscalex = imageScale-math.percent((entity.location.y-1)*10, imageScale)
+        entityscaley = entityscalex
 
-        xpos = xpos - ((animation.clip.quadWidth * entityScale) / 2)
-        ypos = ypos - (animation.clip.quadHeight * entityScale)
+        xpos = xpos - ((animation.clip.quadWidth * entityscalex) / 2)
+        ypos = ypos - (animation.clip.quadHeight * entityscaley)
+    end
+
+    if (entity.flipVirticle) then
+        entityscalex = -entityscalex
     end
 
     
     --log.debug("draw data animation: ", tserial.pack(animation, handleSerialisation, false))
 
-    return { x = xpos, y = ypos, scale = entityScale, animation = animation }
-end
-
-local function DrawMap(map)
-end
-
-local function DrawMenu()
-    love.graphics.print("s - Start", MAIN_MENU_X, MAIN_MENU_Y)
-    love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y + 25)
+    return { x = xpos, y = ypos, scalex = entityscalex, scaley = entityscaley, animation = animation }
 end
 
 local function DrawConsole()
@@ -184,34 +185,6 @@ local function DrawConsole()
     love.graphics.print("Dog: " .. dogString, GAME_MESSAGE_X+600, GAME_MESSAGE_Y+40)
 end
 
-local function DrawIntro()
-    if IntroState == INTRO_START then
-        love.graphics.print("time to let pepper off the lead", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-    elseif IntroState == INTRO_CUTSCENE then
-        love.graphics.print("pepper is looking for a spot to poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-        love.graphics.print("keep your eye on her", GAME_MESSAGE_X, GAME_MESSAGE_Y+30)
-    elseif IntroState == INTRO_WAIT_INPUT then
-        love.graphics.print("let's find the poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-        love.graphics.print("b - Back", INTRO_MENU_X, INTRO_MENU_Y)
-        love.graphics.print("c - Continue", INTRO_MENU_X, INTRO_MENU_Y+25)
-    else
-        IntroState = INTRO_START
-    end
-
-    if (game.map.drawData and player.drawData and dog.drawData) then
-        love.graphics.polygon('fill', 
-        game.map.drawData.tl.x,game.map.drawData.tl.y, 
-        game.map.drawData.tr.x,game.map.drawData.tr.y, 
-        game.map.drawData.br.x,game.map.drawData.br.y, 
-        game.map.drawData.bl.x,game.map.drawData.bl.y)
-
-
-        love.graphics.draw(player.drawData.animation.clip.image, player.drawData.animation.clip.frame, player.drawData.x, player.drawData.y, 0, player.drawData.scale, player.drawData.scale)
-        --love.graphics.draw(dog.drawData.animation.clip.image, dog.drawData.animation.clip.frame, dog.drawData.x, dog.drawData.y, 0, dog.drawData.scale, dog.drawData.scale)
-        --DrawConsole()
-    end
-end
-
 function m.OnLoad()
     love.window.setMode( 1000, 800)
     LoopState = LOOP_MENU
@@ -242,22 +215,21 @@ function m.OnKeyreleased(key)
             LoopState = LOOP_INTRO
         elseif key == COMMAND_EXIT then
             LoopState = LOOP_EXIT
+            ExitState = EXIT_CUTSCENE
         end
     end
 end
 
 function m.UpdateFrames(dt)
     local playtime = anim.AdvanceFrameTimer(dt);
-    if ( dt < 0.04 and playtime) then
+    if (playtime > 0) then
         if LoopState == LOOP_INTRO then
-            log.debug("update ")
-            
-            log.debug("player state: ", player.state)
+            --log.debug("player state: ", player.state)
             if (player.state == PLAYER_UNLEASHING) then
                 if (not anim.AdvanceAnimation(playtime, player.animations[player.state])) then
                     player.state = PLAYER_WAITING
-                    dog.state = DOG_POOPING
-                    log.debug("set dog to pooping ")
+                    dog.state = DOG_RUNNING
+                    --log.debug("set dog to pooping ")
                 end
             end
             if (player.state == PLAYER_WAITING) then
@@ -267,17 +239,54 @@ function m.UpdateFrames(dt)
                 end
             end
 
+            if (dog.state == DOG_RUNNING) then
+                if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
+                    dog.state = DOG_POOPING
+                    dog.location = game.pooplocation
+                else
+                    local randomLocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+                    dog.flipVirticle = dog.location.x > randomLocation.x
+                    dog.location = randomLocation
+                end
+            end
+
             if (dog.state == DOG_POOPING) then
                 if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
-                    dog.state = DOG_SITTING
-                end                
+                    dog.state = DOG_WALKING
+                end
+            end
+
+            if (dog.state == DOG_WALKING) then
+                if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
+                    dog.animations[dog.state].clip = false
+                    anim.AdvanceAnimation(playtime, dog.animations[dog.state])
+                else
+                    if (dog.location.x == game.sitlocation.x and dog.location.y == game.sitlocation.y) then
+                        dog.state = DOG_SITTING
+                    else
+                        if(dog.location.x > game.sitlocation.x) then
+                            dog.location.x = dog.location.x -1
+                        end
+                        if(dog.location.x < game.sitlocation.x) then
+                            dog.location.x = dog.location.x +1
+                        end
+                        if(dog.location.y > game.sitlocation.y) then
+                            dog.location.y = dog.location.y -1
+                        end
+                        if(dog.location.y < game.sitlocation.y) then
+                            dog.location.y = dog.location.y +1
+                        end
+                    end
+
+                    dog.flipVirticle = dog.location.x > game.sitlocation.x
+                end
             end
 
             if (dog.state == DOG_LEASHED) then
                 if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
                     dog.animations[dog.state].clip = false
                     anim.AdvanceAnimation(playtime, dog.animations[dog.state])
-                end                
+                end
             end
 
             if (dog.state == DOG_SITTING) then
@@ -287,34 +296,74 @@ function m.UpdateFrames(dt)
                 end
                 IntroState = INTRO_WAIT_INPUT
             end
-
-            local mapdrwdata = CreateMapDrawData()
-            game.map.drawData = mapdrwdata
-            log.debug("map draw data: ", 'cell width: ', mapdrwdata.cellWidth, 'tl x: ', mapdrwdata.tl.x, 'tl y: ', mapdrwdata.tl.y,  'tr x: ', mapdrwdata.tr.x, 'tr y: ', mapdrwdata.tr.y)
-            player.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
-            log.debug("player draw data: ", 'x: ', player.drawData.x, 'y: ', player.drawData.y, 'scale: ', player.drawData.scale )
-            dog.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
-            log.debug("dog draw data: ", 'x: ', dog.drawData.x, 'y: ', dog.drawData.y, 'scale: ', dog.drawData.scale )
+            
+        end
+        
+        if LoopState == LOOP_EXIT then
+           --log.debug("LOOP_EXIT")
+            if (not anim.AdvanceAnimation(playtime, goodbye.message_anim)) then
+                love.event.quit()
+            else
+               --log.debug("exiting")
+                goodbye.xupdate = goodbye.xupdate + 20
+            end
         end
     end
 end
 
 function m.DrawFrames()
+   --log.debug("draw")
     if LoopState==LOOP_MENU then
-        DrawMenu()
+        love.graphics.print("s - Start", MAIN_MENU_X, MAIN_MENU_Y)
+        love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y + 25)
     elseif LoopState == LOOP_INTRO then
-        DrawIntro()
+        if IntroState == INTRO_START then
+            love.graphics.print("time to let pepper off the lead", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+        elseif IntroState == INTRO_CUTSCENE then
+            love.graphics.print("pepper is looking for a spot to poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+            love.graphics.print("keep your eye on her", GAME_MESSAGE_X, GAME_MESSAGE_Y+30)
+        elseif IntroState == INTRO_WAIT_INPUT then
+            love.graphics.print("let's find the poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+            love.graphics.print("b - Back", INTRO_MENU_X, INTRO_MENU_Y)
+            love.graphics.print("c - Continue", INTRO_MENU_X, INTRO_MENU_Y+25)
+        else
+            IntroState = INTRO_START
+        end
+    
+
+        local mapdrwdata = CreateMapDrawData()
+        game.map.drawData = mapdrwdata
+        --log.debug("map draw data: ", 'cell width: ', mapdrwdata.cellWidth, 'tl x: ', mapdrwdata.tl.x, 'tl y: ', mapdrwdata.tl.y,  'tr x: ', mapdrwdata.tr.x, 'tr y: ', mapdrwdata.tr.y)
+        player.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
+        --log.debug("player draw data: ", 'x: ', player.drawData.x, 'y: ', player.drawData.y, 'scale: ', player.drawData.scale )
+        dog.drawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
+        --log.debug("dog draw data: ", 'x: ', dog.drawData.x, 'y: ', dog.drawData.y, 'scale: ', dog.drawData.scale )
+
+        love.graphics.polygon('fill',
+        game.map.drawData.tl.x,game.map.drawData.tl.y,
+        game.map.drawData.tr.x,game.map.drawData.tr.y,
+        game.map.drawData.br.x,game.map.drawData.br.y,
+        game.map.drawData.bl.x,game.map.drawData.bl.y)
+
+        if (game.map.drawData and player.drawData and dog.drawData) then
+
+            love.graphics.draw(player.drawData.animation.clip.image, player.drawData.animation.clip.frame, player.drawData.x, player.drawData.y, 0, player.drawData.scalex, player.drawData.scaley)
+            love.graphics.draw(dog.drawData.animation.clip.image, dog.drawData.animation.clip.frame, dog.drawData.x, dog.drawData.y, 0, dog.drawData.scalex, dog.drawData.scaley)
+            --DrawConsole()
+        end
     elseif LoopState == LOOP_PLAY then
-        DrawMap(game.map)
     elseif LoopState == LOOP_WIN then
     elseif LoopState == LOOP_FAIL then
     elseif LoopState == LOOP_EXIT then
+        --log.debug("draw")
         love.graphics.print("Goodbye!", GAME_MESSAGE_X, GAME_MESSAGE_Y)
         
-        goodbye.locationpx.x = EXIT_CUTSCENE_X+goodbye.message_anim.xupdate
-        goodbye.locationpx.y = EXIT_CUTSCENE_Y
-        
-        love.graphics.draw(goodbye.message_anim.image, goodbye.message_anim.quad, goodbye.locationpx.x, goodbye.locationpx.y, 0, goodbye.scalepx, goodbye.scalepx)
+        if (goodbye.message_anim.clip) then
+            goodbye.locationpx.x = EXIT_CUTSCENE_X+goodbye.xupdate
+            goodbye.locationpx.y = EXIT_CUTSCENE_Y
+            
+            love.graphics.draw(goodbye.message_anim.clip.image, goodbye.message_anim.clip.frame, goodbye.locationpx.x, goodbye.locationpx.y, 0, goodbye.scalepx, goodbye.scalepx)
+        end
     end
 end
 
