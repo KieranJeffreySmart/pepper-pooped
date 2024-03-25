@@ -6,19 +6,20 @@ local handleSerialisation = function () return '' end
 
 dd2 = {}
 
-DOG_LEASHED = 12
-DOG_RUNNING = 13
-DOG_POSITIONING = 14
-DOG_POOPING = 15
-DOG_WALKING = 16
-DOG_SITTING = 17
+DOG_LEASHED = 1
+DOG_RUNNING = 2
+DOG_POSITIONING = 3
+DOG_POOPING = 4
+DOG_WALKING = 5
+DOG_SITTING = 6
+DOG_SITTING_TOP = 7
 DOG_DEFAULT_QUAD_WIDTH = 32
 DOG_DEFAULT_QUAD_HEIGHT = 32
 
 function dd2.NewDog(defaultState, startLocation)
     local dog = {}
     dog.state = defaultState
-    dog.location = startLocation
+    dog.location = { x = startLocation.x, y = startLocation.y }
     dog.defaultState = defaultState
 
     dog.animations = {}
@@ -71,6 +72,13 @@ function dd2.NewDog(defaultState, startLocation)
     local sitclip = anim.NewClip(0, yPos, 2, DOG_DEFAULT_QUAD_WIDTH, DOG_DEFAULT_QUAD_HEIGHT, image)
     if (sitclip) then
         table.insert(dog.animations[DOG_SITTING].cliplist, sitclip)
+    end
+    
+    local topimage = love.graphics.newImage("dog_animations_top_32x32.bmp")
+    dog.animations[DOG_SITTING_TOP] = anim.NewAnimation(DOG_SITTING_TOP)
+    local topsitclip = anim.NewClip(0, 0, 2, DOG_DEFAULT_QUAD_WIDTH, DOG_DEFAULT_QUAD_HEIGHT, topimage)
+    if (topsitclip) then
+        table.insert(dog.animations[DOG_SITTING_TOP].cliplist, topsitclip)
     end
 
     return dog

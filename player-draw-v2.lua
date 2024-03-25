@@ -6,15 +6,19 @@ local handleSerialisation = function () return '' end
 
 pd2 = {}
 
-PLAYER_UNLEASHING = 18
-PLAYER_WAITING = 19
+PLAYER_UNLEASHING = 1
+PLAYER_WAITING = 2
+PLAYER_WAITING_TOP = 3
+
 PLAYER_DEFAULT_QUAD_WIDTH = 32
 PLAYER_DEFAULT_QUAD_HEIGHT = 64
+PLAYER_DEFAULT_QUAD_HEIGHT_TOP = 32
 
-function pd2.NewPlayer(defaultState, startLocation)
+function pd2.NewPlayer(defaultState, startLocation, defaultOrientation)
     local player = {}
     player.state = defaultState
-    player.location = startLocation
+    player.location = { x = startLocation.x, y = startLocation.y }
+    player.orientation = defaultOrientation
     player.defaultState = defaultState
 
     player.animations = {}
@@ -35,6 +39,13 @@ function pd2.NewPlayer(defaultState, startLocation)
     local waitingClip = anim.NewClip(0, yPos, 2, PLAYER_DEFAULT_QUAD_WIDTH,  PLAYER_DEFAULT_QUAD_HEIGHT, image)
     if (waitingClip) then
         player.animations[PLAYER_WAITING].cliplist[1] = unleashingClip
+    end
+    
+    local topimage = love.graphics.newImage("player_animations_top_32x32.bmp")
+    player.animations[PLAYER_WAITING_TOP] = anim.NewAnimation(PLAYER_WAITING_TOP)
+    local waitingTopClip = anim.NewClip(0, 0, 2, PLAYER_DEFAULT_QUAD_WIDTH, PLAYER_DEFAULT_QUAD_HEIGHT_TOP, topimage)
+    if (waitingTopClip) then
+        table.insert(player.animations[PLAYER_WAITING_TOP].cliplist, waitingTopClip)
     end
 
     return player
