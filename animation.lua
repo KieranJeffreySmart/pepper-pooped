@@ -3,7 +3,7 @@ local log = require"log"
 local tserial = require"Tserial"
 
 local anim = {}
-anim.fps = 1
+anim.fps = 2
 anim.frame_duration = 1/anim.fps
 anim.current_frame_playtime = 0
 local handleSerialisation = function () return '' end

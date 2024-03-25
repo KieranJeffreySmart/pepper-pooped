@@ -40,13 +40,4 @@ function pd2.NewPlayer(defaultState, startLocation)
     return player
 end
 
-function pd2.updateNextFrame(player)
-    return true
-end
-
-function pd2.updateNextClip(player)
-    -- nothing to do here, do I really need this?
-    return true
-end
-
 return pd2
