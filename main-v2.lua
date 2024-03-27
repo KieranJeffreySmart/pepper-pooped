@@ -111,31 +111,34 @@ local function DoGameCommand(input)
 
     if input == COMMAND_UP then
         player.orientation = ORIENTATION_UP
-        if (player.location.y > 1 and game.map.gameGrid[player.location.x][player.location.y-1] ~= 'D') then
+        if (player.location.y > 1 and game.map.gridmap[player.location.x][player.location.y-1] ~= 'D') then
             player.location.y = player.location.y-1
         end         
     end
     
     if input == COMMAND_DOWN then
         player.orientation = ORIENTATION_DOWN
-        if (player.location.y < game.map.gridsize.y and game.map.gameGrid[player.location.x][player.location.y+1] ~= 'D') then
+        if (player.location.y < game.map.gridsize.y and game.map.gridmap[player.location.x][player.location.y+1] ~= 'D') then
             player.location.y = player.location.y+1
         end
     end
     
     if input == COMMAND_LEFT then
         player.orientation = ORIENTATION_LEFT
-        if (player.location.x > 1 and game.map.gameGrid[player.location.x-1][player.location.y] ~= 'D') then
+        if (player.location.x > 1 and game.map.gridmap[player.location.x-1][player.location.y] ~= 'D') then
             player.location.x = player.location.x-1
         end         
     end
     
     if input == COMMAND_RIGHT then
         player.orientation = ORIENTATION_RIGHT
-        if (player.location.x < game.map.gridsize.x and  game.map.gameGrid[player.location.x+1][player.location.y] ~= 'D') then
+        if (player.location.x < game.map.gridsize.x and  game.map.gridmap[player.location.x+1][player.location.y] ~= 'D') then
             player.location.x = player.location.x+1
-        end         
+        end
     end
+    
+    log.debug("player location: ", player.location.x,'/', player.location.y)
+    log.debug("poop location: ", game.poop.location.x,'/', game.poop.location.y)
 end
 
 function m.OnKeyreleased(key)
@@ -159,9 +162,11 @@ function m.OnKeyreleased(key)
         DoGameCommand(key)
     elseif LoopState == LOOP_WIN or LoopState == LOOP_FAIL then
         if key == COMMAND_NEWGAME then
-            LoopState = LOOP_MENU
-        elseif key == COMMAND_RETRY then
+            IntroReset()
             LoopState = LOOP_INTRO
+        elseif key == COMMAND_RETRY then
+            PlayReset()
+            LoopState = LOOP_PLAY
         elseif key == COMMAND_EXIT then
             LoopState = LOOP_EXIT
             ExitState = EXIT_CUTSCENE
@@ -175,6 +180,7 @@ local function UpdateIntroState(playtime)
         if (not anim.AdvanceAnimation(playtime, player.animations[player.state])) then
             player.state = PLAYER_WAITING
             dog.state = DOG_RUNNING
+            IntroState = INTRO_CUTSCENE
             --log.debug("set dog to pooping ")
         end
     end
@@ -188,11 +194,11 @@ local function UpdateIntroState(playtime)
     if (dog.state == DOG_RUNNING) then
         if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
             dog.state = DOG_POOPING
-            dog.location = game.pooplocation
+            dog.location = { x = game.poop.location.x, y = game.poop.location.y }
         else
             local randomLocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
             dog.flipVirticle = dog.location.x > randomLocation.x
-            dog.location = randomLocation
+            dog.location = { x = randomLocation.x, y = randomLocation.y }
         end
     end
 
@@ -244,6 +250,10 @@ function m.UpdateFrames(dt)
         end
 
         if LoopState == LOOP_PLAY then
+            if (player.location.x == game.poop.location.x and player.location.y == game.poop.location.y) then
+                LoopState = LOOP_FAIL
+                log.debug("stepped in poop")
+            end
             if (player.state == PLAYER_WAITING_TOP) then
                 if not anim.AdvanceAnimation(playtime, player.animations[player.state]) then
                     player.animations[player.state].clip = false
@@ -366,7 +376,7 @@ local function CreateEntityDrawDataTop(maptlx, maptly, cellWidth, scaleToCell, e
     local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
     local relativeY = (cellWidth * (entity.location.y - 1)) + (cellWidth / 2)
     local xpos, ypos =  platformTransform:transformPoint(relativeX, relativeY)
-    local animation = entity.animations[entity.state];
+    local animation = entity.animations[entity.state]
 
     local imageScale = 1
 
@@ -381,7 +391,6 @@ local function CreateEntityDrawDataTop(maptlx, maptly, cellWidth, scaleToCell, e
         -- rotation = 90*(player.orientation - 1)
     end
 
-    
     return { x = xpos, y = ypos, scalex = imageScale, scaley = imageScale, animation = animation, rotation = rotation }
 end
 
@@ -436,6 +445,10 @@ function m.DrawFrames()
         end
     elseif LoopState == LOOP_WIN then
     elseif LoopState == LOOP_FAIL then
+        love.graphics.print("Oh no! You stepped in the poo", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+        love.graphics.print("n - New Game", MAIN_MENU_X, MAIN_MENU_Y)
+        love.graphics.print("r - Retry", MAIN_MENU_X, MAIN_MENU_Y+20)
+        love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y+40)
     elseif LoopState == LOOP_EXIT then
         --log.debug("draw")
         love.graphics.print("Goodbye!", GAME_MESSAGE_X, GAME_MESSAGE_Y)

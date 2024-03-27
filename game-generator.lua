@@ -38,17 +38,17 @@ g = {}
     function RandomGame()
         local game = {}
         game.map  = GetMap(1)
-        game.pooplocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
-        log.debug("poop location: x = ", game.pooplocation.x, " y = ", game.pooplocation.y)
-        game.map.gridmap[game.pooplocation.x][game.pooplocation.y] = 'S'
-        game.poop = GetPoop(1, game.pooplocation, POOP_DROPPED)
-        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
-        log.debug("sit location: x = ", game.sitlocation.x, " y = ", game.sitlocation.y)
-        game.map.gridmap[game.sitlocation.x][game.sitlocation.y] = 'D'
         game.start = {}
         game.start.x = 1
         game.start.y = 5
         game.map.gridmap[game.start.x][game.start.y] = 'P'
+        local pooplocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        log.debug("poop location: x = ", pooplocation.x, " y = ", pooplocation.y)
+        game.map.gridmap[pooplocation.x][pooplocation.y] = 'S'
+        game.poop = GetPoop(1, pooplocation, POOP_DROPPED)
+        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        log.debug("sit location: x = ", game.sitlocation.x, " y = ", game.sitlocation.y)
+        game.map.gridmap[game.sitlocation.x][game.sitlocation.y] = 'D'
         return game
     end
 

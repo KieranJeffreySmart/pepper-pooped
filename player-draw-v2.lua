@@ -10,8 +10,9 @@ PLAYER_UNLEASHING = 1
 PLAYER_WAITING = 2
 PLAYER_WAITING_TOP = 3
 
-PLAYER_DEFAULT_QUAD_WIDTH = 32
-PLAYER_DEFAULT_QUAD_HEIGHT = 64
+PLAYER_DEFAULT_QUAD_WIDTH = 34
+PLAYER_DEFAULT_QUAD_HEIGHT = 81
+PLAYER_DEFAULT_QUAD_WIDTH_TOP = 32
 PLAYER_DEFAULT_QUAD_HEIGHT_TOP = 32
 
 function pd2.NewPlayer(defaultState, startLocation, defaultOrientation)
@@ -23,7 +24,7 @@ function pd2.NewPlayer(defaultState, startLocation, defaultOrientation)
 
     player.animations = {}
 
-    local image = love.graphics.newImage("player_animations_32x64.bmp")
+    local image = love.graphics.newImage("dad_animations_34x81.bmp")
 
     player.animations[PLAYER_UNLEASHING] = anim.NewAnimation(PLAYER_UNLEASHING)
     local yPos = 0
@@ -43,7 +44,7 @@ function pd2.NewPlayer(defaultState, startLocation, defaultOrientation)
     
     local topimage = love.graphics.newImage("player_animations_top_32x32.bmp")
     player.animations[PLAYER_WAITING_TOP] = anim.NewAnimation(PLAYER_WAITING_TOP)
-    local waitingTopClip = anim.NewClip(0, 0, 2, PLAYER_DEFAULT_QUAD_WIDTH, PLAYER_DEFAULT_QUAD_HEIGHT_TOP, topimage)
+    local waitingTopClip = anim.NewClip(0, 0, 2, PLAYER_DEFAULT_QUAD_WIDTH_TOP, PLAYER_DEFAULT_QUAD_HEIGHT_TOP, topimage)
     if (waitingTopClip) then
         table.insert(player.animations[PLAYER_WAITING_TOP].cliplist, waitingTopClip)
     end
