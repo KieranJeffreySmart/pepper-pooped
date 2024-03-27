@@ -4,6 +4,7 @@ local anim = require"animation"
 local tserial = require"Tserial"
 local player_draw_v2 = require"player-draw-v2"
 local dog_draw_v2 = require"dog-draw-v2"
+local poop_draw = require"poop-draw-v2"
 local goodbye_draw = require"goodbye-drawV2"
 local game_generator = require"game-generator"
 
@@ -74,6 +75,7 @@ local goodbye = goodbye_draw.NewMessage()
 local game = {}
 local player = {}
 local dog = {}
+local poop = {}
 
 log.outfile = "C:/Repos/pepper-pooped/log.txt"
 local handleSerialisation = function () return '' end
@@ -89,19 +91,20 @@ end
 local function IntroReset()
     --log.debug("reset intro ")
     game = game_generator.NewGame()
-    player = player_draw_v2.NewPlayer(PLAYER_UNLEASHING, game.start)
-    dog = dog_draw_v2.NewDog(DOG_LEASHED, game.start)
-
+    player = player_draw_v2.NewPlayer(PLAYER_UNLEASHING, game.start, 1)
+    dog = dog_draw_v2.NewDog(DOG_LEASHED, game.start, 0.7)
+    poop = poop_draw.NewPoop(POOP_DROPPED, game.pooplocation, 0.5)
     anim.AdvanceAnimation(0, player.animations[player.state])
     anim.AdvanceAnimation(0, dog.animations[dog.state])
 end
 
 local function PlayReset()
-    player = player_draw_v2.NewPlayer(PLAYER_WAITING_TOP, game.start, ORIENTATION_RIGHT)
-    dog = dog_draw_v2.NewDog(DOG_SITTING_TOP, game.sitlocation)
+    player = player_draw_v2.NewPlayer(PLAYER_WAITING_TOP, game.start, ORIENTATION_RIGHT, 1)
+    dog = dog_draw_v2.NewDog(DOG_SITTING_TOP, game.sitlocation, 0.7)
+    poop = poop_draw.NewPoop(POOP_DROPPED, game.pooplocation, 0.5)
     anim.AdvanceAnimation(0, player.animations[player.state])
     anim.AdvanceAnimation(0, dog.animations[dog.state])
-    anim.AdvanceAnimation(0, game.poop.animations[game.poop.state])
+    anim.AdvanceAnimation(0, poop.animations[poop.state])
 end
 
 local function DoGameCommand(input)
@@ -136,9 +139,6 @@ local function DoGameCommand(input)
             player.location.x = player.location.x+1
         end
     end
-    
-    log.debug("player location: ", player.location.x,'/', player.location.y)
-    log.debug("poop location: ", game.poop.location.x,'/', game.poop.location.y)
 end
 
 function m.OnKeyreleased(key)
@@ -174,6 +174,47 @@ function m.OnKeyreleased(key)
     end
 end
 
+local function GetMapToScreenTransform(mapx, mapy, map, width)
+    local cellWidth = PLAY_WIDTH / map.gridsize.y
+    local scale = (cellWidth / width)
+    local mapTranslation = love.math.newTransform()
+    local relativeX = (cellWidth * (mapx - 1)) + ((cellWidth / 2) - (width / 2))
+    local relativeY = (cellWidth * (mapy - 1)) + ((cellWidth / 2) - (width / 2))
+    mapTranslation:translate(PLAY_X+relativeX, PLAY_Y+relativeY)
+
+    mapTranslation:scale(scale, scale)
+    return mapTranslation
+end
+
+local function HitsEntity(x, y, entity)
+    if (not entity.hitbox) then return false end
+
+    log.debug("we have a box")
+    local mapTranslate = GetMapToScreenTransform(entity.location.x, entity.location.y, game.map, entity.hitbox.br.x)
+    
+    mapTranslate:scale(entity.scaleToMap, entity.scaleToMap)
+
+    local tlx, tly = mapTranslate:transformPoint(0,  0)
+    local brx, bry = mapTranslate:transformPoint(entity.hitbox.br.x,  entity.hitbox.br.x)
+
+    log.debug("hit box: tlx: ", tlx, " tly: ", tly, " brx: ", brx, " bry: ", bry )
+
+    if (x >= tlx and y >= tly
+        and x <= brx and y <= bry) then
+        return true
+    end
+end
+
+function love.mousepressed(x, y, button, istouch)
+    if button == 1 and LoopState == LOOP_PLAY then
+        log.debug("clickedy click x:", x, " y: ", y)
+        if (HitsEntity(x, y, poop)) then
+            log.debug("you're a winner!")
+            LoopState = LOOP_WIN
+        end
+    end
+end
+
 local function UpdateIntroState(playtime)
     --log.debug("player state: ", player.state)
     if (player.state == PLAYER_UNLEASHING) then
@@ -194,7 +235,7 @@ local function UpdateIntroState(playtime)
     if (dog.state == DOG_RUNNING) then
         if (not anim.AdvanceAnimation(playtime, dog.animations[dog.state])) then
             dog.state = DOG_POOPING
-            dog.location = { x = game.poop.location.x, y = game.poop.location.y }
+            dog.location = { x = poop.location.x, y = poop.location.y }
         else
             local randomLocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
             dog.flipVirticle = dog.location.x > randomLocation.x
@@ -250,7 +291,7 @@ function m.UpdateFrames(dt)
         end
 
         if LoopState == LOOP_PLAY then
-            if (player.location.x == game.poop.location.x and player.location.y == game.poop.location.y) then
+            if (player.location.x == poop.location.x and player.location.y == poop.location.y) then
                 LoopState = LOOP_FAIL
                 log.debug("stepped in poop")
             end
@@ -360,38 +401,9 @@ local function CreateMapDrawDataTop(map)
     data.br.y = PLAY_Y + PLAY_HEIGHT
     data.image = love.graphics.newImage(map.backgroundimage)
     data.backgroundscale = PLAY_HEIGHT/data.image:getHeight()
-    data.cellWidth = PLAY_WIDTH / map.gridsize.x
+    data.cellWidth = PLAY_WIDTH / map.gridsize.y
 
     return data
-end
-
-local function CreateEntityDrawDataTop(maptlx, maptly, cellWidth, scaleToCell, entity)
-    if (not entity.state) then
-        error("the entity does not have a valid state")
-    end
-
-    local platformTransform = love.math.newTransform()
-    platformTransform:translate(maptlx, maptly)
-
-    local relativeX = (cellWidth * (entity.location.x - 1)) + (cellWidth / 2)
-    local relativeY = (cellWidth * (entity.location.y - 1)) + (cellWidth / 2)
-    local xpos, ypos =  platformTransform:transformPoint(relativeX, relativeY)
-    local animation = entity.animations[entity.state]
-
-    local imageScale = 1
-
-    if (animation and animation.clip) then
-        imageScale = (cellWidth / animation.clip.quadWidth) * scaleToCell
-        xpos = xpos - ((animation.clip.quadWidth * imageScale) / 2)
-        ypos = ypos - ((animation.clip.quadHeight * imageScale) / 2)
-    end
-
-    local rotation = 0
-    if (player.orientation > 0) then
-        -- rotation = 90*(player.orientation - 1)
-    end
-
-    return { x = xpos, y = ypos, scalex = imageScale, scaley = imageScale, animation = animation, rotation = rotation }
 end
 
 function m.DrawFrames()
@@ -433,17 +445,29 @@ function m.DrawFrames()
         love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y)
         
         local mapDrawData = CreateMapDrawDataTop(game.map)
-        local playerDrawData = CreateEntityDrawDataTop(mapDrawData.tl.x, mapDrawData.tl.y, mapDrawData.cellWidth, 1, player)
-        local dogDrawData = CreateEntityDrawDataTop(mapDrawData.tl.x, mapDrawData.tl.y, mapDrawData.cellWidth, 0.75, dog)
-        local poopDrawData = CreateEntityDrawDataTop(mapDrawData.tl.x, mapDrawData.tl.y, mapDrawData.cellWidth, 0.5, game.poop)
+        local playerClip = player.animations[player.state].clip;
+        local playerMapTransform = GetMapToScreenTransform(player.location.x, player.location.y, game.map, playerClip.quadWidth)
+        playerMapTransform:scale(player.scaleToMap, player.scaleToMap)
+        local dogClip = dog.animations[dog.state].clip;
+        local dogMapTransform = GetMapToScreenTransform(dog.location.x, dog.location.y, game.map, dogClip.quadWidth)
+        dogMapTransform:scale(dog.scaleToMap, dog.scaleToMap)
+        local poopClip = poop.animations[poop.state].clip;
+        local poopMapTransform = GetMapToScreenTransform(poop.location.x, poop.location.y, game.map, poopClip.quadWidth)
+        poopMapTransform:scale(poop.scaleToMap, poop.scaleToMap)
 
-        if (mapDrawData and playerDrawData and dogDrawData) then
+
+        if (playerMapTransform and dogMapTransform and poopMapTransform) then
             love.graphics.draw(mapDrawData.image, mapDrawData.tl.x, mapDrawData.tl.y, 0, mapDrawData.backgroundscale, mapDrawData.backgroundscale)
-            love.graphics.draw(playerDrawData.animation.clip.image, playerDrawData.animation.clip.frame, playerDrawData.x, playerDrawData.y, playerDrawData.rotation, playerDrawData.scalex, playerDrawData.scaley)
-            love.graphics.draw(dogDrawData.animation.clip.image, dogDrawData.animation.clip.frame, dogDrawData.x, dogDrawData.y, 0, dogDrawData.scalex, dogDrawData.scaley)
-            love.graphics.draw(poopDrawData.animation.clip.image, poopDrawData.animation.clip.frame, poopDrawData.x, poopDrawData.y, 0, poopDrawData.scalex, poopDrawData.scaley)
+            love.graphics.draw(playerClip.image, playerClip.frame, playerMapTransform)
+            
+            love.graphics.draw(dogClip.image, dogClip.frame, dogMapTransform)
+            love.graphics.draw(poopClip.image, poopClip.frame, poopMapTransform)
         end
     elseif LoopState == LOOP_WIN then
+        love.graphics.print("Well done! You found the poo", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+        love.graphics.print("n - New Game", MAIN_MENU_X, MAIN_MENU_Y)
+        love.graphics.print("r - Retry", MAIN_MENU_X, MAIN_MENU_Y+20)
+        love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y+40)
     elseif LoopState == LOOP_FAIL then
         love.graphics.print("Oh no! You stepped in the poo", GAME_MESSAGE_X, GAME_MESSAGE_Y)
         love.graphics.print("n - New Game", MAIN_MENU_X, MAIN_MENU_Y)

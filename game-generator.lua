@@ -43,38 +43,14 @@ g = {}
         game.start.y = 5
         game.map.gridmap[game.start.x][game.start.y] = 'P'
         local pooplocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        game.pooplocation = pooplocation
         log.debug("poop location: x = ", pooplocation.x, " y = ", pooplocation.y)
         game.map.gridmap[pooplocation.x][pooplocation.y] = 'S'
-        game.poop = GetPoop(1, pooplocation, POOP_DROPPED)
-        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
+        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)        
         log.debug("sit location: x = ", game.sitlocation.x, " y = ", game.sitlocation.y)
         game.map.gridmap[game.sitlocation.x][game.sitlocation.y] = 'D'
         return game
     end
-
-    function GetPoop(poopid, location, defaultState)
-        local poop = {}
-        poop.id = poopid
-        poop.location = { x = location.x, y = location.y }
-        poop.state = defaultState
-
-        poop.animations = {}
-
-        local image = love.graphics.newImage("poop_animations_16x16.bmp")
-
-        poop.image = image
-        poop.animations[POOP_DROPPED] = anim.NewAnimation(POOP_DROPPED)
-        local yPos = 0
-        local leashedClip = anim.NewClip(0, yPos, 1, QUAD_WIDTH, QUAD_HEIGHT, image)
-        if (leashedClip) then
-            table.insert(poop.animations[POOP_DROPPED].cliplist, leashedClip)
-        end
-
-        return poop
-    end
-
-
-
 
     function GetMap(mapid)
         local map = {}
@@ -85,8 +61,8 @@ g = {}
         map.backgroundsize.y = 524
 
         map.gridsize = {}
-        map.gridsize.x = 7
-        map.gridsize.y = 7
+        map.gridsize.x = 14
+        map.gridsize.y = 14
 
         map.gridmap = {}
 
@@ -112,4 +88,5 @@ g = {}
             map.gridmap[objloc.x][objloc.y] = index
         end
     end
+
 return g

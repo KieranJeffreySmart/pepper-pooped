@@ -15,10 +15,11 @@ PLAYER_DEFAULT_QUAD_HEIGHT = 81
 PLAYER_DEFAULT_QUAD_WIDTH_TOP = 32
 PLAYER_DEFAULT_QUAD_HEIGHT_TOP = 32
 
-function pd2.NewPlayer(defaultState, startLocation, defaultOrientation)
+function pd2.NewPlayer(defaultState, startLocation, defaultOrientation, scaleToMap)
     local player = {}
     player.state = defaultState
     player.location = { x = startLocation.x, y = startLocation.y }
+    player.scaleToMap = scaleToMap
     player.orientation = defaultOrientation
     player.defaultState = defaultState
 

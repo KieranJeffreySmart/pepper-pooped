@@ -16,10 +16,11 @@ DOG_SITTING_TOP = 7
 DOG_DEFAULT_QUAD_WIDTH = 32
 DOG_DEFAULT_QUAD_HEIGHT = 32
 
-function dd2.NewDog(defaultState, startLocation)
+function dd2.NewDog(defaultState, location, scaleToMap)
     local dog = {}
     dog.state = defaultState
-    dog.location = { x = startLocation.x, y = startLocation.y }
+    dog.location = { x = location.x, y = location.y }
+    dog.scaleToMap = scaleToMap
     dog.defaultState = defaultState
 
     dog.animations = {}
