@@ -13,6 +13,10 @@ function love.keyreleased(key)
     mainV2.OnKeyreleased(key)
 end
 
+function love.mousepressed(x, y, button, istouch)
+    mainV2.mousepressed(x, y, button, istouch)
+end
+
 function love.update(dt)
     mainV2.UpdateFrames(dt)
 end

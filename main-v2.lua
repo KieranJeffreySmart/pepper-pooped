@@ -36,6 +36,8 @@ COMMAND_UP = 'w'
 COMMAND_DOWN = 's'
 COMMAND_LEFT = 'a'
 COMMAND_RIGHT = 'd'
+COMMAND_ZOOMIN = 'q'
+COMMAND_ZOOMOUT = 'e'
 
 ORIENTATION_RIGHT = 1
 ORIENTATION_DOWN = 2
@@ -99,6 +101,7 @@ local function IntroReset()
 end
 
 local function PlayReset()
+    love.graphics.setScissor(PLAY_X, PLAY_Y, PLAY_WIDTH, PLAY_HEIGHT)
     player = player_draw_v2.NewPlayer(PLAYER_WAITING_TOP, game.start, ORIENTATION_RIGHT, 1)
     dog = dog_draw_v2.NewDog(DOG_SITTING_TOP, game.sitlocation, 0.7)
     poop = poop_draw.NewPoop(POOP_DROPPED, game.pooplocation, 0.5)
@@ -139,6 +142,14 @@ local function DoGameCommand(input)
             player.location.x = player.location.x+1
         end
     end
+
+    if (input == COMMAND_ZOOMIN and game.display_x > 1) then
+        game.display_x = game.display_x-1
+    end
+
+    if (input == COMMAND_ZOOMOUT and game.display_x < game.map.gridsize.x) then
+        game.display_x = game.display_x+1
+    end
 end
 
 function m.OnKeyreleased(key)
@@ -174,15 +185,25 @@ function m.OnKeyreleased(key)
     end
 end
 
-local function GetMapToScreenTransform(mapx, mapy, map, width)
-    local cellWidth = PLAY_WIDTH / map.gridsize.y
-    local scale = (cellWidth / width)
+local function GetMapToScreenTransform(mapx, mapy, display_x, width)
+    local cellWidth = PLAY_WIDTH / display_x
+    local scale = 1
+    local viewOffset = math.floor(display_x/2)
+    local offsetMapX = mapx-math.max(player.location.x - viewOffset, 0)
+    local offsetMapY = mapy-math.max(player.location.y - viewOffset, 0)
     local mapTranslation = love.math.newTransform()
-    local relativeX = (cellWidth * (mapx - 1)) + ((cellWidth / 2) - (width / 2))
-    local relativeY = (cellWidth * (mapy - 1)) + ((cellWidth / 2) - (width / 2))
-    mapTranslation:translate(PLAY_X+relativeX, PLAY_Y+relativeY)
 
+    local relativeX = (cellWidth * (offsetMapX - 1))
+    local relativeY = (cellWidth * (offsetMapY - 1))
+    if (width) then
+        scale = (cellWidth / width)
+        relativeX = relativeX + ((cellWidth / 2) - (width / 2))
+        relativeY = relativeY + ((cellWidth / 2) - (width / 2))
+    end
+
+    mapTranslation:translate(PLAY_X+relativeX, PLAY_Y+relativeY)
     mapTranslation:scale(scale, scale)
+
     return mapTranslation
 end
 
@@ -190,7 +211,7 @@ local function HitsEntity(x, y, entity)
     if (not entity.hitbox) then return false end
 
     log.debug("we have a box")
-    local mapTranslate = GetMapToScreenTransform(entity.location.x, entity.location.y, game.map, entity.hitbox.br.x)
+    local mapTranslate = GetMapToScreenTransform(entity.location.x, entity.location.y, game.display_x, entity.hitbox.br.x)
     
     mapTranslate:scale(entity.scaleToMap, entity.scaleToMap)
 
@@ -205,7 +226,7 @@ local function HitsEntity(x, y, entity)
     end
 end
 
-function love.mousepressed(x, y, button, istouch)
+function m.mousepressed(x, y, button, istouch)
     if button == 1 and LoopState == LOOP_PLAY then
         log.debug("clickedy click x:", x, " y: ", y)
         if (HitsEntity(x, y, poop)) then
@@ -385,6 +406,36 @@ local function CreateEntityDrawData(platformX, platformY, cellWidth, entity)
     return { x = xpos, y = ypos, scalex = entityscalex, scaley = entityscaley, animation = animation, rotation = 0 }
 end
 
+local function DrawIntro()
+    if IntroState == INTRO_START then
+        love.graphics.print("time to let pepper off the lead", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+    elseif IntroState == INTRO_CUTSCENE then
+        love.graphics.print("pepper is looking for a spot to poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+        love.graphics.print("keep your eye on her", GAME_MESSAGE_X, GAME_MESSAGE_Y+30)
+    elseif IntroState == INTRO_WAIT_INPUT then
+        love.graphics.print("let's find the poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
+        love.graphics.print("b - Back", INTRO_MENU_X, INTRO_MENU_Y)
+        love.graphics.print("c - Continue", INTRO_MENU_X, INTRO_MENU_Y+25)
+    else
+        IntroState = INTRO_START
+    end
+
+    local mapdrwdata = CreateMapDrawData()
+    local playerdrawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
+    local dogdrawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
+
+    love.graphics.polygon('fill',
+    mapdrwdata.tl.x,mapdrwdata.tl.y,
+    mapdrwdata.tr.x,mapdrwdata.tr.y,
+    mapdrwdata.br.x,mapdrwdata.br.y,
+    mapdrwdata.bl.x,mapdrwdata.bl.y)
+
+    if (mapdrwdata and playerdrawData and dogdrawData) then
+        love.graphics.draw(playerdrawData.animation.clip.image, playerdrawData.animation.clip.frame, playerdrawData.x, playerdrawData.y, 0, playerdrawData.scalex, playerdrawData.scaley)
+        love.graphics.draw(dogdrawData.animation.clip.image, dogdrawData.animation.clip.frame, dogdrawData.x, dogdrawData.y, 0, dogdrawData.scalex, dogdrawData.scaley)
+    end
+end
+
 local function CreateMapDrawDataTop(map)
     local data = {}
     data.tl = {}
@@ -401,7 +452,7 @@ local function CreateMapDrawDataTop(map)
     data.br.y = PLAY_Y + PLAY_HEIGHT
     data.image = love.graphics.newImage(map.backgroundimage)
     data.backgroundscale = PLAY_HEIGHT/data.image:getHeight()
-    data.cellWidth = PLAY_WIDTH / map.gridsize.y
+    data.cellWidth = PLAY_WIDTH / map.display_x
 
     return data
 end
@@ -412,52 +463,31 @@ function m.DrawFrames()
         love.graphics.print("s - Start", MAIN_MENU_X, MAIN_MENU_Y)
         love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y + 25)
     elseif LoopState == LOOP_INTRO then
-        if IntroState == INTRO_START then
-            love.graphics.print("time to let pepper off the lead", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-        elseif IntroState == INTRO_CUTSCENE then
-            love.graphics.print("pepper is looking for a spot to poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-            love.graphics.print("keep your eye on her", GAME_MESSAGE_X, GAME_MESSAGE_Y+30)
-        elseif IntroState == INTRO_WAIT_INPUT then
-            love.graphics.print("let's find the poop", GAME_MESSAGE_X, GAME_MESSAGE_Y)
-            love.graphics.print("b - Back", INTRO_MENU_X, INTRO_MENU_Y)
-            love.graphics.print("c - Continue", INTRO_MENU_X, INTRO_MENU_Y+25)
-        else
-            IntroState = INTRO_START
-        end
-
-        local mapdrwdata = CreateMapDrawData()
-        local playerdrawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, player)
-        local dogdrawData = CreateEntityDrawData(mapdrwdata.tl.x, mapdrwdata.tl.y, mapdrwdata.cellWidth, dog)
-
-        love.graphics.polygon('fill',
-        mapdrwdata.tl.x,mapdrwdata.tl.y,
-        mapdrwdata.tr.x,mapdrwdata.tr.y,
-        mapdrwdata.br.x,mapdrwdata.br.y,
-        mapdrwdata.bl.x,mapdrwdata.bl.y)
-
-        if (mapdrwdata and playerdrawData and dogdrawData) then
-            love.graphics.draw(playerdrawData.animation.clip.image, playerdrawData.animation.clip.frame, playerdrawData.x, playerdrawData.y, 0, playerdrawData.scalex, playerdrawData.scaley)
-            love.graphics.draw(dogdrawData.animation.clip.image, dogdrawData.animation.clip.frame, dogdrawData.x, dogdrawData.y, 0, dogdrawData.scalex, dogdrawData.scaley)
-        end
-
+        DrawIntro()
     elseif LoopState == LOOP_PLAY then
         love.graphics.print("This is a work in progress, thank you for watching my into", GAME_MESSAGE_X, GAME_MESSAGE_Y)
         love.graphics.print("x - Exit", MAIN_MENU_X, MAIN_MENU_Y)
+
         
-        local mapDrawData = CreateMapDrawDataTop(game.map)
+        local mapTransform = GetMapToScreenTransform(1, 1, game.display_x)
+        local mapimage = love.graphics.newImage(game.map.backgroundimage)
+        local backgroundscale = PLAY_HEIGHT / mapimage:getHeight()
+        mapTransform:scale(backgroundscale, backgroundscale)
+        mapTransform:scale(game.map.gridsize.x / game.display_x)
+
         local playerClip = player.animations[player.state].clip;
-        local playerMapTransform = GetMapToScreenTransform(player.location.x, player.location.y, game.map, playerClip.quadWidth)
+        local playerMapTransform = GetMapToScreenTransform(player.location.x, player.location.y, game.display_x, playerClip.quadWidth)
         playerMapTransform:scale(player.scaleToMap, player.scaleToMap)
         local dogClip = dog.animations[dog.state].clip;
-        local dogMapTransform = GetMapToScreenTransform(dog.location.x, dog.location.y, game.map, dogClip.quadWidth)
+        local dogMapTransform = GetMapToScreenTransform(dog.location.x, dog.location.y, game.display_x, dogClip.quadWidth)
         dogMapTransform:scale(dog.scaleToMap, dog.scaleToMap)
+
         local poopClip = poop.animations[poop.state].clip;
-        local poopMapTransform = GetMapToScreenTransform(poop.location.x, poop.location.y, game.map, poopClip.quadWidth)
+        local poopMapTransform = GetMapToScreenTransform(poop.location.x, poop.location.y, game.display_x, poopClip.quadWidth)
         poopMapTransform:scale(poop.scaleToMap, poop.scaleToMap)
 
-
         if (playerMapTransform and dogMapTransform and poopMapTransform) then
-            love.graphics.draw(mapDrawData.image, mapDrawData.tl.x, mapDrawData.tl.y, 0, mapDrawData.backgroundscale, mapDrawData.backgroundscale)
+            love.graphics.draw(mapimage, mapTransform)
             love.graphics.draw(playerClip.image, playerClip.frame, playerMapTransform)
             
             love.graphics.draw(dogClip.image, dogClip.frame, dogMapTransform)

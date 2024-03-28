@@ -41,12 +41,13 @@ g = {}
         game.start = {}
         game.start.x = 1
         game.start.y = 5
+        game.display_x = 5
         game.map.gridmap[game.start.x][game.start.y] = 'P'
         local pooplocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
         game.pooplocation = pooplocation
         log.debug("poop location: x = ", pooplocation.x, " y = ", pooplocation.y)
         game.map.gridmap[pooplocation.x][pooplocation.y] = 'S'
-        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)        
+        game.sitlocation = mapping.GetRandomAvailableLocation(game.map.gridmap, game.map.gridsize)
         log.debug("sit location: x = ", game.sitlocation.x, " y = ", game.sitlocation.y)
         game.map.gridmap[game.sitlocation.x][game.sitlocation.y] = 'D'
         return game
